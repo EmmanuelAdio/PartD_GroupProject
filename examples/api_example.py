@@ -70,10 +70,13 @@ def process_question():
         }), 200
         
     except Exception as e:
+        # Log the full error for debugging but don't expose details to users
+        import logging
+        logging.error(f"Error processing question: {str(e)}", exc_info=True)
         return jsonify({
             'success': False,
             'data': None,
-            'error': str(e)
+            'error': 'An error occurred processing your request'
         }), 500
 
 
@@ -114,10 +117,13 @@ def get_answer():
         }), 200
         
     except Exception as e:
+        # Log the full error for debugging but don't expose details to users
+        import logging
+        logging.error(f"Error getting answer: {str(e)}", exc_info=True)
         return jsonify({
             'success': False,
             'answer': None,
-            'error': str(e)
+            'error': 'An error occurred processing your request'
         }), 500
 
 
@@ -158,10 +164,13 @@ def evaluate_question():
         }), 200
         
     except Exception as e:
+        # Log the full error for debugging but don't expose details to users
+        import logging
+        logging.error(f"Error getting evaluation: {str(e)}", exc_info=True)
         return jsonify({
             'success': False,
             'evaluation': None,
-            'error': str(e)
+            'error': 'An error occurred processing your request'
         }), 500
 
 
@@ -227,5 +236,12 @@ if __name__ == '__main__':
     print('       -H "Content-Type: application/json" \\')
     print('       -d \'{"question": "What is AI?"}\'')
     print("\n" + "="*80 + "\n")
+    print("WARNING: This example runs Flask in debug mode for development only.")
+    print("For production, set debug=False and use a production WSGI server like gunicorn.")
+    print()
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Note: debug=True is for development/example purposes only
+    # In production, use debug=False and a production WSGI server
+    import os
+    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(debug=debug_mode, host='127.0.0.1', port=5000)
