@@ -16,6 +16,14 @@ Then run:
 from flask import Flask, request, jsonify
 import sys
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -71,8 +79,7 @@ def process_question():
         
     except Exception as e:
         # Log the full error for debugging but don't expose details to users
-        import logging
-        logging.error(f"Error processing question: {str(e)}", exc_info=True)
+        logger.error(f"Error processing question: {str(e)}", exc_info=True)
         return jsonify({
             'success': False,
             'data': None,
@@ -118,8 +125,7 @@ def get_answer():
         
     except Exception as e:
         # Log the full error for debugging but don't expose details to users
-        import logging
-        logging.error(f"Error getting answer: {str(e)}", exc_info=True)
+        logger.error(f"Error getting answer: {str(e)}", exc_info=True)
         return jsonify({
             'success': False,
             'answer': None,
@@ -165,8 +171,7 @@ def evaluate_question():
         
     except Exception as e:
         # Log the full error for debugging but don't expose details to users
-        import logging
-        logging.error(f"Error getting evaluation: {str(e)}", exc_info=True)
+        logger.error(f"Error getting evaluation: {str(e)}", exc_info=True)
         return jsonify({
             'success': False,
             'evaluation': None,
@@ -242,6 +247,8 @@ if __name__ == '__main__':
     
     # Note: debug=True is for development/example purposes only
     # In production, use debug=False and a production WSGI server
-    import os
     debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
-    app.run(debug=debug_mode, host='127.0.0.1', port=5000)
+    host = os.environ.get('FLASK_HOST', '127.0.0.1')
+    port = int(os.environ.get('FLASK_PORT', '5000'))
+    
+    app.run(debug=debug_mode, host=host, port=port)
