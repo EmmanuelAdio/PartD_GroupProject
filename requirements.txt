@@ -9,3 +9,6 @@
 # torch>=2.0.0  # For PyTorch-based models
 # numpy>=1.24.0  # For numerical operations
 # pandas>=2.0.0  # For data processing
+
+# Optional dependencies for API server:
+# flask>=3.0.0  # For REST API (see examples/api_example.py)

@@ -21,6 +21,7 @@ class EvaluatorAgent(BaseAgent):
     def __init__(self, config: Dict[str, Any] = None):
         """Initialize the Evaluator Agent."""
         super().__init__("Evaluator", config)
+        config = config or {}
         self.scoring_weights = config.get('scoring_weights', {
             'relevance': 0.35,
             'completeness': 0.25,
