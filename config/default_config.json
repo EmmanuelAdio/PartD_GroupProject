@@ -1,0 +1,32 @@
+{
+  "system": {
+    "name": "AI Agent System",
+    "version": "1.0.0",
+    "description": "Three-agent AI system with Processor, Answerer, and Evaluator"
+  },
+  "processor": {
+    "enabled": true,
+    "max_keywords": 10,
+    "stop_words_enabled": true
+  },
+  "answerer": {
+    "enabled": true,
+    "default_confidence": "medium",
+    "include_sources": true,
+    "include_supporting_details": true
+  },
+  "evaluator": {
+    "enabled": true,
+    "quality_threshold": 70,
+    "scoring_weights": {
+      "relevance": 0.35,
+      "completeness": 0.25,
+      "clarity": 0.20,
+      "accuracy": 0.20
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  }
+}
