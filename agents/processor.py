@@ -1,9 +1,9 @@
 
-import json
 from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional, Tuple
 import re
 import unicodedata
+from gazetteer_loader import GazetteerLoader
 
 
 INTENT_PATTERNS = [
@@ -49,8 +49,7 @@ INTENT_PATTERNS = [
 ]
 
 # Load gazetteer from JSON file
-with open('gazetteer.json', 'r') as file:
-    GAZETTEER = json.load(file)       
+GAZETTEER = GazetteerLoader("gazetteer.json").load()
 
 @dataclass
 class ProcessorOutput:

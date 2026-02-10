@@ -4,15 +4,16 @@ from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional, Tuple
 import re
 import unicodedata
-from intent_loader import load_intent_patterns
+import os
+
+from mongo_store import MongoStore
+
+from dotenv import load_dotenv
+load_dotenv()
 
 
-#load intent patterns from JSON file
-INTENT_PATTERNS = load_intent_patterns("intent_patterns.json")
-
-# Load gazetteer from JSON file
-with open('gazetteer.json', 'r') as file:
-    GAZETTEER = json.load(file)       
+MONGODB_URI = os.environ.get("MONGODB_URI")
+MONGODB_DB = os.environ.get("MONGODB_DB", "partd_group")
 
 @dataclass
 class ProcessorOutput:
@@ -103,7 +104,7 @@ class ProcessorAgent_LLM:
             for canonical_name, synonyms in entries.items():
                 for phrase in synonyms + [canonical_name]:
                     # basic substring match; can be improved later
-                    if phrase in clean_text:
+                    if phrase in clean_text: 
                         found.setdefault(slot_type, [])
                         if canonical_name not in found[slot_type]:
                             found[slot_type].append(canonical_name) 
@@ -165,7 +166,26 @@ class ProcessorAgent_LLM:
             parts.append(extra)
 
         return " ; ".join(parts)
-    
+
+
+# #load intent patterns from JSON file
+# INTENT_PATTERNS = load_intent_patterns("intent_patterns.json")
+# # Load gazetteer from JSON file
+# GAZETTEER = GazetteerLoader("gazetteer.json").load()
+
+MONGODB_URI = os.environ.get("MONGODB_URI")
+MONGODB_DB = os.environ.get("MONGODB_DB", "partd_group")
+
+if not MONGODB_URI:
+    raise RuntimeError("MONGODB_URI is not set. Put it in your environment or .env file.")
+else:
+    print("MONGODB_URI found in environment.")
+    print(f"MONGODB connected: {MONGODB_URI}, DB: {MONGODB_DB}")
+
+store = MongoStore(mongo_uri=MONGODB_URI, db_name=MONGODB_DB)
+
+INTENT_PATTERNS = store.load_intent_patterns()
+GAZETTEER = store.load_gazetteer_for_slots()
 
 # Instantiate a global processor agent
 processor_agent = ProcessorAgent_LLM(
