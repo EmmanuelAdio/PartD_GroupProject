@@ -1,265 +1,415 @@
-{
-    "campus_location": {
-        "haslegrave building": ["haslegrave", "computer science building"],
-        "pilkington library": ["pilkington library", "library"],
-        "epinal way entrance": ["epinal way entrance", "main entrance"]
-    },
-    "school": {
-        "computer science": ["computer science", "cs department", "school of science"],
-        "business school": ["business school", "lubs"]
-    },
-    "service": {
-        "accommodation centre": ["accommodation centre", "accommodation office"],
-        "student services": ["student services", "welfare office", "support services"]
-    },
-    "course_entry": {
-        "entry requirements": [
-            "entry requirements",
-            "what are the entry requirements",
-            "admissions requirements",
-            "entry criteria",
-            "entry grades"
+[
+    {
+        "_id": "campus_location",
+        "items": [
+            { "canonical": "haslegrave building", "aliases": ["haslegrave", "computer science building"] },
+            { "canonical": "pilkington library", "aliases": ["pilkington library", "library"] },
+            { "canonical": "epinal way entrance", "aliases": ["epinal way entrance", "main entrance"] }
         ]
     },
-    "student_engagement": {
-        "student panel": [
-            "student panel",
-            "talk to current students",
-            "speak to students",
-            "student ambassadors",
-            "meet current students",
-            "student talk"
-        ],
-        "open day": [
-            "open day",
-            "visit day",
-            "taster session",
-            "school open day"
+    {
+        "_id": "school",
+        "items": [
+            { "canonical": "computer science", "aliases": ["computer science", "cs department", "school of science"] },
+            { "canonical": "business school", "aliases": ["business school", "lubs"] }
         ]
     },
-    "course_structure": {
-        "typical week": [
-            "typical week",
-            "what does a typical week look like",
-            "weekly timetable",
-            "typical timetable",
-            "typical week on this course"
-        ],
-        "delivery methods": [
-            "lectures",
-            "seminars",
-            "labs",
-            "tutorials",
-            "how are classes delivered",
-            "teaching methods",
-            "class formats"
-        ],
-        "class size": [
-            "average class size",
-            "average class size for first-year",
-            "class size for first year",
-            "how big are classes"
+    {
+        "_id": "service",
+        "items": [
+            { "canonical": "accommodation centre", "aliases": ["accommodation centre", "accommodation office"] },
+            { "canonical": "student services", "aliases": ["student services", "welfare office", "support services"] }
         ]
     },
-    "assessment": {
-        "assessment and grading": [
-            "assessment",
-            "grading",
-            "how is student performance assessed",
-            "how are students assessed",
-            "assessment methods",
-            "grading criteria"
-        ],
-        "feedback": [
-            "feedback",
-            "assessment feedback",
-            "exam feedback",
-            "marks and feedback"
+    {
+        "_id": "course_entry",
+        "items": [
+            {
+                "canonical": "entry requirements",
+                "aliases": [
+                    "entry requirements",
+                    "what are the entry requirements",
+                    "admissions requirements",
+                    "entry criteria",
+                    "entry grades"
+                ]
+            }
         ]
     },
-    "placements": {
-        "placements and internships": [
-            "placements",
-            "internships",
-            "year abroad",
-            "industrial placement",
-            "sandwich year",
-            "placement opportunities"
+    {
+        "_id": "student_engagement",
+        "items": [
+            {
+                "canonical": "student panel",
+                "aliases": [
+                    "student panel",
+                    "talk to current students",
+                    "speak to students",
+                    "student ambassadors",
+                    "meet current students",
+                    "student talk"
+                ]
+            },
+            {
+                "canonical": "open day",
+                "aliases": [
+                    "open day",
+                    "visit day",
+                    "taster session",
+                    "school open day"
+                ]
+            }
         ]
     },
-    "careers": {
-        "careers service": [
-            "careers service",
-            "career support",
-            "employability services",
-            "career advice",
-            "careers support"
-        ],
-        "graduate outcomes": [
-            "graduate employment rates",
-            "graduate outcomes",
-            "example employers",
-            "where do graduates work",
-            "graduate destinations"
+    {
+        "_id": "course_structure",
+        "items": [
+            {
+                "canonical": "typical week",
+                "aliases": [
+                    "typical week",
+                    "what does a typical week look like",
+                    "weekly timetable",
+                    "typical timetable",
+                    "typical week on this course"
+                ]
+            },
+            {
+                "canonical": "delivery methods",
+                "aliases": [
+                    "lectures",
+                    "seminars",
+                    "labs",
+                    "tutorials",
+                    "how are classes delivered",
+                    "teaching methods",
+                    "class formats"
+                ]
+            },
+            {
+                "canonical": "class size",
+                "aliases": [
+                    "average class size",
+                    "average class size for first-year",
+                    "class size for first year",
+                    "how big are classes"
+                ]
+            }
         ]
     },
-    "modules": {
-        "modules and options": [
-            "compulsory modules",
-            "optional modules",
-            "what modules are compulsory",
-            "module options",
-            "available modules",
-            "change modules",
-            "pathway change",
-            "module flexibility"
+    {
+        "_id": "assessment",
+        "items": [
+            {
+                "canonical": "assessment and grading",
+                "aliases": [
+                    "assessment",
+                    "grading",
+                    "how is student performance assessed",
+                    "how are students assessed",
+                    "assessment methods",
+                    "grading criteria"
+                ]
+            },
+            {
+                "canonical": "feedback",
+                "aliases": [
+                    "feedback",
+                    "assessment feedback",
+                    "exam feedback",
+                    "marks and feedback"
+                ]
+            }
         ]
     },
-    "teaching_staff": {
-        "teaching staff": [
-            "who will be teaching",
-            "teaching team",
-            "course staff",
-            "academic staff",
-            "lecturers",
-            "module convenors",
-            "staff backgrounds",
-            "staff CVs"
+    {
+        "_id": "placements",
+        "items": [
+            {
+                "canonical": "placements and internships",
+                "aliases": [
+                    "placements",
+                    "internships",
+                    "year abroad",
+                    "industrial placement",
+                    "sandwich year",
+                    "placement opportunities"
+                ]
+            }
         ]
     },
-    "facilities": {
-        "practical facilities": [
-            "labs",
-            "studios",
-            "workshops",
-            "practical work",
-            "lab facilities",
-            "studio facilities",
-            "workshop facilities",
-            "practical equipment"
+    {
+        "_id": "careers",
+        "items": [
+            {
+                "canonical": "careers service",
+                "aliases": [
+                    "careers service",
+                    "career support",
+                    "employability services",
+                    "career advice",
+                    "careers support"
+                ]
+            },
+            {
+                "canonical": "graduate outcomes",
+                "aliases": [
+                    "graduate employment rates",
+                    "graduate outcomes",
+                    "example employers",
+                    "where do graduates work",
+                    "graduate destinations"
+                ]
+            }
         ]
     },
-    "library": {
-        "library resources": [
-            "library resources",
-            "research databases",
-            "online journals",
-            "access to databases",
-            "library access",
-            "electronic resources"
+    {
+        "_id": "modules",
+        "items": [
+            {
+                "canonical": "modules and options",
+                "aliases": [
+                    "compulsory modules",
+                    "optional modules",
+                    "what modules are compulsory",
+                    "module options",
+                    "available modules",
+                    "change modules",
+                    "pathway change",
+                    "module flexibility"
+                ]
+            }
         ]
     },
-    "wellbeing": {
-        "mental health support": [
-            "mental health",
-            "wellbeing support",
-            "counselling",
-            "student wellbeing",
-            "mental health services",
-            "wellbeing services"
+    {
+        "_id": "teaching_staff",
+        "items": [
+            {
+                "canonical": "teaching staff",
+                "aliases": [
+                    "who will be teaching",
+                    "teaching team",
+                    "course staff",
+                    "academic staff",
+                    "lecturers",
+                    "module convenors",
+                    "staff backgrounds",
+                    "staff CVs"
+                ]
+            }
         ]
     },
-    "academic_support": {
-        "academic support": [
-            "academic support",
-            "tutors",
-            "personal tutor",
-            "drop-ins",
-            "study skills workshops",
-            "academic workshops",
-            "tutor support"
+    {
+        "_id": "facilities",
+        "items": [
+            {
+                "canonical": "practical facilities",
+                "aliases": [
+                    "labs",
+                    "studios",
+                    "workshops",
+                    "practical work",
+                    "lab facilities",
+                    "studio facilities",
+                    "workshop facilities",
+                    "practical equipment"
+                ]
+            }
         ]
     },
-    "accommodation": {
-        "accommodation options": [
-            "accommodation options",
-            "on-campus accommodation",
-            "halls of residence",
-            "private housing",
-            "where to live",
-            "when to apply for accommodation",
-            "apply for halls"
+    {
+        "_id": "library",
+        "items": [
+            {
+                "canonical": "library resources",
+                "aliases": [
+                    "library resources",
+                    "research databases",
+                    "online journals",
+                    "access to databases",
+                    "library access",
+                    "electronic resources"
+                ]
+            }
         ]
     },
-    "living_costs": {
-        "living costs": [
-            "living costs",
-            "typical living costs",
-            "cost of living",
-            "budget",
-            "accommodation costs",
-            "food costs",
-            "living expenses"
+    {
+        "_id": "wellbeing",
+        "items": [
+            {
+                "canonical": "mental health support",
+                "aliases": [
+                    "mental health",
+                    "wellbeing support",
+                    "counselling",
+                    "student wellbeing",
+                    "mental health services",
+                    "wellbeing services"
+                ]
+            }
         ]
     },
-    "financial_support": {
-        "funding": [
-            "scholarships",
-            "bursaries",
-            "financial support",
-            "student finance",
-            "hardship fund",
-            "tuition fees support",
-            "fee waivers"
+    {
+        "_id": "academic_support",
+        "items": [
+            {
+                "canonical": "academic support",
+                "aliases": [
+                    "academic support",
+                    "tutors",
+                    "personal tutor",
+                    "drop-ins",
+                    "study skills workshops",
+                    "academic workshops",
+                    "tutor support"
+                ]
+            }
         ]
     },
-    "safety": {
-        "campus safety": [
-            "safety",
-            "how safe is the campus",
-            "campus security",
-            "local area safety",
-            "crime on campus"
+    {
+        "_id": "accommodation",
+        "items": [
+            {
+                "canonical": "accommodation options",
+                "aliases": [
+                    "accommodation options",
+                    "on-campus accommodation",
+                    "halls of residence",
+                    "private housing",
+                    "where to live",
+                    "when to apply for accommodation",
+                    "apply for halls"
+                ]
+            }
         ]
     },
-    "transport": {
-        "transport links": [
-            "transport links",
-            "buses to campus",
-            "train links",
-            "how to get to campus",
-            "parking",
-            "shuttle bus",
-            "public transport"
+    {
+        "_id": "living_costs",
+        "items": [
+            {
+                "canonical": "living costs",
+                "aliases": [
+                    "living costs",
+                    "typical living costs",
+                    "cost of living",
+                    "budget",
+                    "accommodation costs",
+                    "food costs",
+                    "living expenses"
+                ]
+            }
         ]
     },
-    "societies": {
-        "student societies": [
-            "student societies",
-            "clubs",
-            "societies to join",
-            "student union clubs",
-            "recommend societies",
-            "sports clubs"
+    {
+        "_id": "financial_support",
+        "items": [
+            {
+                "canonical": "funding",
+                "aliases": [
+                    "scholarships",
+                    "bursaries",
+                    "financial support",
+                    "student finance",
+                    "hardship fund",
+                    "tuition fees support",
+                    "fee waivers"
+                ]
+            }
         ]
     },
-    "international": {
-        "international support": [
-            "international students support",
-            "visa advice",
-            "immigration support",
-            "international office",
-            "support for international students"
+    {
+        "_id": "safety",
+        "items": [
+            {
+                "canonical": "campus safety",
+                "aliases": [
+                    "safety",
+                    "how safe is the campus",
+                    "campus security",
+                    "local area safety",
+                    "crime on campus"
+                ]
+            }
         ]
     },
-    "part_time": {
-        "part-time work": [
-            "part-time work",
-            "can I work while studying",
-            "working while studying",
-            "working hours while studying",
-            "student work"
+    {
+        "_id": "transport",
+        "items": [
+            {
+                "canonical": "transport links",
+                "aliases": [
+                    "transport links",
+                    "buses to campus",
+                    "train links",
+                    "how to get to campus",
+                    "parking",
+                    "shuttle bus",
+                    "public transport"
+                ]
+            }
         ]
     },
-    "applications": {
-        "applications": [
-            "how to apply",
-            "application deadline",
-            "key application deadlines",
-            "UCAS",
-            "apply for course",
-            "application process",
-            "deadlines"
+    {
+        "_id": "societies",
+        "items": [
+            {
+                "canonical": "student societies",
+                "aliases": [
+                    "student societies",
+                    "clubs",
+                    "societies to join",
+                    "student union clubs",
+                    "recommend societies",
+                    "sports clubs"
+                ]
+            }
+        ]
+    },
+    {
+        "_id": "international",
+        "items": [
+            {
+                "canonical": "international support",
+                "aliases": [
+                    "international students support",
+                    "visa advice",
+                    "immigration support",
+                    "international office",
+                    "support for international students"
+                ]
+            }
+        ]
+    },
+    {
+        "_id": "part_time",
+        "items": [
+            {
+                "canonical": "part-time work",
+                "aliases": [
+                    "part-time work",
+                    "can I work while studying",
+                    "working while studying",
+                    "working hours while studying",
+                    "student work"
+                ]
+            }
+        ]
+    },
+    {
+        "_id": "applications",
+        "items": [
+            {
+                "canonical": "applications",
+                "aliases": [
+                    "how to apply",
+                    "application deadline",
+                    "key application deadlines",
+                    "UCAS",
+                    "apply for course",
+                    "application process",
+                    "deadlines"
+                ]
+            }
         ]
     }
-}
+]

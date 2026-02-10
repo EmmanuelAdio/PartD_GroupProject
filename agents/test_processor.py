@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from typing import Dict, List
 
-from processor import processor_agent
+from processor_LLM import processor_agent
 
 
 def _load_questions() -> List[str]:
@@ -38,8 +38,7 @@ def _validate_output(output: Dict) -> None:
 def test_process_example_questions() -> None:
     questions = _load_questions()
 
-    print("\n\n Questions: " + ", ".join(questions))  # Debug: print loaded questions
-
+    # print("\n\n Questions: " + ", ".join(questions))  # Debug: print loaded questions
     assert questions, "No questions found in ExampleQuestions.txt"
 
     for question in questions:

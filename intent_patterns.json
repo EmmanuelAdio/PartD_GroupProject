@@ -1,0 +1,78 @@
+[
+  {
+    "intent": "ask_location",
+    "patterns": [
+      { "regex": "\\bwhere(?:'s| is)\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\blocation of\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\bwhere can i find\\b", "flags": ["IGNORECASE"] }
+    ]
+  },
+  {
+    "intent": "ask_directions",
+    "patterns": [
+      { "regex": "\\bhow do i get to\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\bhow (?:do i|can i) (?:get|go) to\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\bdirections to\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\bclosest (?:entrance|bus stop|parking)\\b", "flags": ["IGNORECASE"] }
+    ]
+  },
+  {
+    "intent": "ask_time",
+    "patterns": [
+      { "regex": "\\bwhen(?:'s| is)\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\bwhat time (?:does|do)\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\bwhat(?:'s| is) the time\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\bopening hours\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\b(open|close|closing time|opens at|closes at)\\b", "flags": ["IGNORECASE"] }
+    ]
+  },
+  {
+    "intent": "ask_entry_requirements",
+    "patterns": [
+      { "regex": "\\bentry requirements\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\b(grade|ucas|tariff|requirements?)\\b", "flags": ["IGNORECASE"] }
+    ]
+  },
+  {
+    "intent": "ask_course_info",
+    "patterns": [
+      { "regex": "\\bwhat (?:do i|will i) study\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\bmodules?\\b|\\bcourse content\\b|\\bsyllabus\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\bhow long (?:is|does) (?:the )?course\\b", "flags": ["IGNORECASE"] }
+    ]
+  },
+  {
+    "intent": "ask_fees",
+    "patterns": [
+      { "regex": "\\btuition fees?\\b|\\bfees?\\b", "flags": ["IGNORECASE"] }
+    ]
+  },
+  {
+    "intent": "ask_funding",
+    "patterns": [
+      { "regex": "\\bscholarships?\\b|\\bbursar(?:y|ies)\\b|\\bfinancial support\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\bstudent finance\\b", "flags": ["IGNORECASE"] }
+    ]
+  },
+  {
+    "intent": "ask_accommodation",
+    "patterns": [
+      { "regex": "\\baccommodation\\b|\\bhalls?\\b|\\bdorms?\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\brent\\b|\\bdeposit\\b|\\btenanc(?:y|ies)\\b", "flags": ["IGNORECASE"] }
+    ]
+  },
+  {
+    "intent": "ask_it_help",
+    "patterns": [
+      { "regex": "\\blogin\\b|\\bpassword\\b|\\breset\\b|\\b2fa\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\bwifi\\b|\\beduroam\\b|\\bconnect\\b", "flags": ["IGNORECASE"] }
+    ]
+  },
+  {
+    "intent": "ask_library",
+    "patterns": [
+      { "regex": "\\blibrary\\b|\\bpilkington\\b", "flags": ["IGNORECASE"] },
+      { "regex": "\\brenew\\b|\\bborrow\\b|\\breturn\\b|\\bfines?\\b", "flags": ["IGNORECASE"] }
+    ]
+  }
+]

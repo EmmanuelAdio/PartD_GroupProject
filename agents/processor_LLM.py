@@ -4,49 +4,11 @@ from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional, Tuple
 import re
 import unicodedata
+from intent_loader import load_intent_patterns
 
 
-INTENT_PATTERNS = [
-    # ---------- Location / Directions ----------
-    ("ask_location", re.compile(r"\bwhere(?:'s| is)\b", re.I)),
-    ("ask_location", re.compile(r"\blocation of\b", re.I)),
-    ("ask_location", re.compile(r"\bwhere can i find\b", re.I)),
-    ("ask_directions", re.compile(r"\bhow do i get to\b", re.I)),
-    ("ask_directions", re.compile(r"\bhow (?:do i|can i) (?:get|go) to\b", re.I)),
-    ("ask_directions", re.compile(r"\bdirections to\b", re.I)),
-    ("ask_directions", re.compile(r"\bclosest (?:entrance|bus stop|parking)\b", re.I)),
-
-    # ---------- Time / Schedule ----------
-    ("ask_time", re.compile(r"\bwhen(?:'s| is)\b", re.I)),
-    ("ask_time", re.compile(r"\bwhat time (?:does|do)\b", re.I)),
-    ("ask_time", re.compile(r"\bwhat(?:'s| is) the time\b", re.I)),
-    ("ask_time", re.compile(r"\bopening hours\b", re.I)),
-    ("ask_time", re.compile(r"\b(open|close|closing time|opens at|closes at)\b", re.I)),
-
-    # ---------- Course / Study ----------
-    ("ask_entry_requirements", re.compile(r"\bentry requirements\b", re.I)),
-    ("ask_entry_requirements", re.compile(r"\b(grade|ucas|tariff|requirements?)\b", re.I)),
-    ("ask_course_info", re.compile(r"\bwhat (?:do i|will i) study\b", re.I)),
-    ("ask_course_info", re.compile(r"\bmodules?\b|\bcourse content\b|\bsyllabus\b", re.I)),
-    ("ask_course_info", re.compile(r"\bhow long (?:is|does) (?:the )?course\b", re.I)),
-
-    # ---------- Fees / Funding ----------
-    ("ask_fees", re.compile(r"\btuition fees?\b|\bfees?\b", re.I)),
-    ("ask_funding", re.compile(r"\bscholarships?\b|\bbursar(?:y|ies)\b|\bfinancial support\b", re.I)),
-    ("ask_funding", re.compile(r"\bstudent finance\b", re.I)),
-
-    # ---------- Accommodation ----------
-    ("ask_accommodation", re.compile(r"\baccommodation\b|\bhalls?\b|\bdorms?\b", re.I)),
-    ("ask_accommodation", re.compile(r"\brent\b|\bdeposit\b|\btenanc(?:y|ies)\b", re.I)),
-
-    # ---------- IT / Accounts ----------
-    ("ask_it_help", re.compile(r"\blogin\b|\bpassword\b|\breset\b|\b2fa\b", re.I)),
-    ("ask_it_help", re.compile(r"\bwifi\b|\beduroam\b|\bconnect\b", re.I)),
-
-    # ---------- Library ----------
-    ("ask_library", re.compile(r"\blibrary\b|\bpilkington\b", re.I)),
-    ("ask_library", re.compile(r"\brenew\b|\bborrow\b|\breturn\b|\bfines?\b", re.I)),
-]
+#load intent patterns from JSON file
+INTENT_PATTERNS = load_intent_patterns("intent_patterns.json")
 
 # Load gazetteer from JSON file
 with open('gazetteer.json', 'r') as file:
@@ -63,7 +25,7 @@ class ProcessorOutput:
     confidence: Dict[str, float]
 
 
-class ProcessorAgent:
+class ProcessorAgent_LLM:
     def __init__(
         self,
         gazetteer: Dict[str, Dict[str, List[str]]], # can later be replaced with a DB or more complex structure
@@ -206,7 +168,7 @@ class ProcessorAgent:
     
 
 # Instantiate a global processor agent
-processor_agent = ProcessorAgent(
+processor_agent = ProcessorAgent_LLM(
     gazetteer=GAZETTEER,
     intent_patterns=INTENT_PATTERNS
 )  
