@@ -1,0 +1,3 @@
+# Processor Agent requirements
+python-dotenv
+pymongo
