@@ -109,7 +109,7 @@ class ProcessorAgent:
                     if phrase in clean_text:
                         found.setdefault(slot_type, [])
                         if canonical_name not in found[slot_type]:
-                            found[slot_type].append(canonical_name)
+                            found[slot_type].append(canonical_name) 
 
         # extract free-text phrase after some location patterns as "place"
         place_phrases = self._extract_place_phrases(clean_text)
@@ -175,9 +175,3 @@ processor_agent = ProcessorAgent(
     gazetteer=GAZETTEER,
     intent_patterns=INTENT_PATTERNS
 )  
-
-# Example usage
-result = processor_agent.process("What are the entry requirements for this course? ")
-print(result)
-
-
