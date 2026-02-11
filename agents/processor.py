@@ -1,55 +1,67 @@
 
 from dataclasses import dataclass, asdict
+import os
+import sys
 from typing import Dict, List, Optional, Tuple
 import re
 import unicodedata
-from gazetteer_loader import GazetteerLoader
+
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv() # loads .env file if present, but doesn't error if it's missing.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from mongo_db.mongo_store import MongoStore
 
 
-INTENT_PATTERNS = [
-    # ---------- Location / Directions ----------
-    ("ask_location", re.compile(r"\bwhere(?:'s| is)\b", re.I)),
-    ("ask_location", re.compile(r"\blocation of\b", re.I)),
-    ("ask_location", re.compile(r"\bwhere can i find\b", re.I)),
-    ("ask_directions", re.compile(r"\bhow do i get to\b", re.I)),
-    ("ask_directions", re.compile(r"\bhow (?:do i|can i) (?:get|go) to\b", re.I)),
-    ("ask_directions", re.compile(r"\bdirections to\b", re.I)),
-    ("ask_directions", re.compile(r"\bclosest (?:entrance|bus stop|parking)\b", re.I)),
 
-    # ---------- Time / Schedule ----------
-    ("ask_time", re.compile(r"\bwhen(?:'s| is)\b", re.I)),
-    ("ask_time", re.compile(r"\bwhat time (?:does|do)\b", re.I)),
-    ("ask_time", re.compile(r"\bwhat(?:'s| is) the time\b", re.I)),
-    ("ask_time", re.compile(r"\bopening hours\b", re.I)),
-    ("ask_time", re.compile(r"\b(open|close|closing time|opens at|closes at)\b", re.I)),
+# INTENT_PATTERNS = [
+#     # ---------- Location / Directions ----------
+#     ("ask_location", re.compile(r"\bwhere(?:'s| is)\b", re.I)),
+#     ("ask_location", re.compile(r"\blocation of\b", re.I)),
+#     ("ask_location", re.compile(r"\bwhere can i find\b", re.I)),
+#     ("ask_directions", re.compile(r"\bhow do i get to\b", re.I)),
+#     ("ask_directions", re.compile(r"\bhow (?:do i|can i) (?:get|go) to\b", re.I)),
+#     ("ask_directions", re.compile(r"\bdirections to\b", re.I)),
+#     ("ask_directions", re.compile(r"\bclosest (?:entrance|bus stop|parking)\b", re.I)),
 
-    # ---------- Course / Study ----------
-    ("ask_entry_requirements", re.compile(r"\bentry requirements\b", re.I)),
-    ("ask_entry_requirements", re.compile(r"\b(grade|ucas|tariff|requirements?)\b", re.I)),
-    ("ask_course_info", re.compile(r"\bwhat (?:do i|will i) study\b", re.I)),
-    ("ask_course_info", re.compile(r"\bmodules?\b|\bcourse content\b|\bsyllabus\b", re.I)),
-    ("ask_course_info", re.compile(r"\bhow long (?:is|does) (?:the )?course\b", re.I)),
+#     # ---------- Time / Schedule ----------
+#     ("ask_time", re.compile(r"\bwhen(?:'s| is)\b", re.I)),
+#     ("ask_time", re.compile(r"\bwhat time (?:does|do)\b", re.I)),
+#     ("ask_time", re.compile(r"\bwhat(?:'s| is) the time\b", re.I)),
+#     ("ask_time", re.compile(r"\bopening hours\b", re.I)),
+#     ("ask_time", re.compile(r"\b(open|close|closing time|opens at|closes at)\b", re.I)),
 
-    # ---------- Fees / Funding ----------
-    ("ask_fees", re.compile(r"\btuition fees?\b|\bfees?\b", re.I)),
-    ("ask_funding", re.compile(r"\bscholarships?\b|\bbursar(?:y|ies)\b|\bfinancial support\b", re.I)),
-    ("ask_funding", re.compile(r"\bstudent finance\b", re.I)),
+#     # ---------- Course / Study ----------
+#     ("ask_entry_requirements", re.compile(r"\bentry requirements\b", re.I)),
+#     ("ask_entry_requirements", re.compile(r"\b(grade|ucas|tariff|requirements?)\b", re.I)),
+#     ("ask_course_info", re.compile(r"\bwhat (?:do i|will i) study\b", re.I)),
+#     ("ask_course_info", re.compile(r"\bmodules?\b|\bcourse content\b|\bsyllabus\b", re.I)),
+#     ("ask_course_info", re.compile(r"\bhow long (?:is|does) (?:the )?course\b", re.I)),
 
-    # ---------- Accommodation ----------
-    ("ask_accommodation", re.compile(r"\baccommodation\b|\bhalls?\b|\bdorms?\b", re.I)),
-    ("ask_accommodation", re.compile(r"\brent\b|\bdeposit\b|\btenanc(?:y|ies)\b", re.I)),
+#     # ---------- Fees / Funding ----------
+#     ("ask_fees", re.compile(r"\btuition fees?\b|\bfees?\b", re.I)),
+#     ("ask_funding", re.compile(r"\bscholarships?\b|\bbursar(?:y|ies)\b|\bfinancial support\b", re.I)),
+#     ("ask_funding", re.compile(r"\bstudent finance\b", re.I)),
 
-    # ---------- IT / Accounts ----------
-    ("ask_it_help", re.compile(r"\blogin\b|\bpassword\b|\breset\b|\b2fa\b", re.I)),
-    ("ask_it_help", re.compile(r"\bwifi\b|\beduroam\b|\bconnect\b", re.I)),
+#     # ---------- Accommodation ----------
+#     ("ask_accommodation", re.compile(r"\baccommodation\b|\bhalls?\b|\bdorms?\b", re.I)),
+#     ("ask_accommodation", re.compile(r"\brent\b|\bdeposit\b|\btenanc(?:y|ies)\b", re.I)),
 
-    # ---------- Library ----------
-    ("ask_library", re.compile(r"\blibrary\b|\bpilkington\b", re.I)),
-    ("ask_library", re.compile(r"\brenew\b|\bborrow\b|\breturn\b|\bfines?\b", re.I)),
-]
+#     # ---------- IT / Accounts ----------
+#     ("ask_it_help", re.compile(r"\blogin\b|\bpassword\b|\breset\b|\b2fa\b", re.I)),
+#     ("ask_it_help", re.compile(r"\bwifi\b|\beduroam\b|\bconnect\b", re.I)),
 
-# Load gazetteer from JSON file
-GAZETTEER = GazetteerLoader("gazetteer.json").load()
+#     # ---------- Library ----------
+#     ("ask_library", re.compile(r"\blibrary\b|\bpilkington\b", re.I)),
+#     ("ask_library", re.compile(r"\brenew\b|\bborrow\b|\breturn\b|\bfines?\b", re.I)),
+# ]
+
+# # Load gazetteer from JSON file
+# GAZETTEER = GazetteerLoader("gazetteer.json").load()
 
 @dataclass
 class ProcessorOutput:
@@ -203,9 +215,27 @@ class ProcessorAgent:
 
         return " ; ".join(parts)
     
+# -------------------------------------------------------------------
+# Processor agent setup: load patterns, gazetteer, connect to DB, etc.
+# -------------------------------------------------------------------
+
+MONGODB_URI = os.environ.get("MONGODB_URI")
+MONGODB_DB = os.environ.get("MONGODB_DB", "partd_group")
+
+if not MONGODB_URI:
+    raise RuntimeError("MONGODB_URI is not set. Put it in your environment or .env file.")
+else:
+    print("MONGODB_URI found in environment.")
+    print(f"MONGODB connected: {MONGODB_URI}, DB: {MONGODB_DB}")
+
+store = MongoStore(mongo_uri=MONGODB_URI, db_name=MONGODB_DB)
+
+INTENT_PATTERNS = store.load_intent_patterns()
+GAZETTEER = store.load_gazetteer_for_slots()
 
 # Instantiate a global processor agent
 processor_agent = ProcessorAgent(
     gazetteer=GAZETTEER,
     intent_patterns=INTENT_PATTERNS
 )  
+

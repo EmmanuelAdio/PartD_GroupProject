@@ -1,19 +1,29 @@
-
-import json
 from dataclasses import dataclass, asdict
+import sys
 from typing import Dict, List, Optional, Tuple
 import re
 import unicodedata
-import os
 
-from mongo_store import MongoStore
+import os
+from pathlib import Path
 
 from dotenv import load_dotenv
-load_dotenv()
+
+load_dotenv() # loads .env file if present, but doesn't error if it's missing.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from mongo_db.mongo_store import MongoStore
+from utils.llm_intent import BaseIntentClassifier, NullIntentClassifier, build_intent_classifier_from_env
 
 
-MONGODB_URI = os.environ.get("MONGODB_URI")
-MONGODB_DB = os.environ.get("MONGODB_DB", "partd_group")
+ # -------------------------------------------------------------
+
+ALLOWED_INTENTS = {
+    "ask_location", "ask_directions", "ask_time",
+    "ask_entry_requirements", "ask_course_info",
+    "ask_fees", "ask_funding", "ask_accommodation",
+    "ask_it_help", "ask_library", "other"
+}
 
 @dataclass
 class ProcessorOutput:
@@ -30,10 +40,13 @@ class ProcessorAgent_LLM:
     def __init__(
         self,
         gazetteer: Dict[str, Dict[str, List[str]]], # can later be replaced with a DB or more complex structure
-        intent_patterns: List[Tuple[str, re.Pattern]] # list of (intent_label, regex_pattern) may be extended later
+        intent_patterns: List[Tuple[str, re.Pattern]], # list of (intent_label, regex_pattern) may be extended later
+        intent_classifier: Optional[BaseIntentClassifier] = None,
     ):
         self.gazetteer = gazetteer
         self.intent_patterns = intent_patterns
+        self.intent_classifier = intent_classifier or NullIntentClassifier()
+        self.intent_labels = sorted({label for label, _ in intent_patterns})
 
     # ---------- PUBLIC API ----------
     def process(self, text: str) -> Dict:
@@ -73,7 +86,9 @@ class ProcessorAgent_LLM:
             if pattern.search(clean_text):
                 # later you can make this more nuanced
                 return intent_label, 0.9
-        # TODO: call LLM for fallback intent classification
+        llm_result = self.intent_classifier.classify_intent(clean_text, self.intent_labels)
+        if llm_result.intent:
+            return llm_result.intent, llm_result.confidence
         return None, 0.0
 
     def _map_intent_to_domain(self, intent: Optional[str]) -> Optional[str]:
@@ -168,10 +183,9 @@ class ProcessorAgent_LLM:
         return " ; ".join(parts)
 
 
-# #load intent patterns from JSON file
-# INTENT_PATTERNS = load_intent_patterns("intent_patterns.json")
-# # Load gazetteer from JSON file
-# GAZETTEER = GazetteerLoader("gazetteer.json").load()
+# -------------------------------------------------------------------
+# Processor agent setup: load patterns, gazetteer, connect to DB, etc.
+# -------------------------------------------------------------------
 
 MONGODB_URI = os.environ.get("MONGODB_URI")
 MONGODB_DB = os.environ.get("MONGODB_DB", "partd_group")
@@ -188,7 +202,10 @@ INTENT_PATTERNS = store.load_intent_patterns()
 GAZETTEER = store.load_gazetteer_for_slots()
 
 # Instantiate a global processor agent
+intent_classifier = build_intent_classifier_from_env()
+
 processor_agent = ProcessorAgent_LLM(
     gazetteer=GAZETTEER,
-    intent_patterns=INTENT_PATTERNS
-)  
+    intent_patterns=INTENT_PATTERNS,
+    intent_classifier=intent_classifier,
+)
