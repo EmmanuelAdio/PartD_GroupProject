@@ -194,7 +194,8 @@ if not MONGODB_URI:
     raise RuntimeError("MONGODB_URI is not set. Put it in your environment or .env file.")
 else:
     print("MONGODB_URI found in environment.")
-    print(f"MONGODB connected: {MONGODB_URI}, DB: {MONGODB_DB}")
+    print(f"MONGODB connected. DB: {MONGODB_DB}")
+
 
 store = MongoStore(mongo_uri=MONGODB_URI, db_name=MONGODB_DB)
 
