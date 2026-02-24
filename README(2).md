@@ -20,23 +20,20 @@ It solves the problem: *“Users speak naturally, but the Answerer needs a predi
 
 ```mermaid
 flowchart TD
-    A[User Question] --> B[ProcessorAgent_LLM.process()]
-    B --> C[Normalize text\n(lowercase + unicode NFKC)]
-    C --> D{OpenAI available?\nOPENAI_API_KEY set}
-    D -- Yes --> E[LLM Extraction\n(intent + entities + requested_fields)]
-    D -- No --> F[Fallback Intent Classifier\n(utils/llm_intent)]
-    E --> G{Valid intent\nin ALLOWED_INTENTS?}
-    G -- Yes --> H[Map intent -> domain]
-    G -- No --> F
-    F --> H[Map intent -> domain]
-
-    H --> I[Build slots from entities\n(+ generic entity list)]
-    I --> J{Entity resolution enabled?\nENABLE_ENTITY_RESOLUTION=1\n& Mongo connected}
-    J -- Yes --> K[Resolve entity to exact DB doc\n(accommodation / undergraduate_courses)]
-    J -- No --> L[Skip resolution]
-
-    K --> M[Build retrieval_query\n(debug string)]
+    A["User question"] --> B["process(text)"]
+    B --> C["Normalize text<br/>(lowercase + Unicode NFKC)"]
+    C --> D{"OpenAI available?<br/>OPENAI_API_KEY set"}
+    D -- "Yes" --> E["LLM extraction<br/>intent + entities + requested_fields"]
+    D -- "No" --> F["Fallback intent classifier<br/>utils.llm_intent"]
+    E --> G{"Valid intent in ALLOWED_INTENTS?"}
+    G -- "Yes" --> H["Map intent → domain"]
+    G -- "No" --> F
+    F --> H["Map intent → domain"]
+    H --> I["Build slots from entities<br/>(and generic entity list)"]
+    I --> J{"Entity resolution enabled?<br/>ENABLE_ENTITY_RESOLUTION=1<br/>and Mongo connected"}
+    J -- "Yes" --> K["Resolve entity to exact DB doc<br/>accommodation or undergraduate_courses"]
+    J -- "No" --> L["Skip resolution"]
+    K --> M["Build retrieval_query (debug string)"]
     L --> M
-
-    M --> N[Return structured output\n+ _debug info]
-    N --> O[Answerer uses domain + slots\nand resolved_id if present]
+    M --> N["Return structured output + _debug"]
+    N --> O["Answerer uses domain + slots<br/>and resolved_id if present"]
