@@ -82,3 +82,8 @@ flowchart TD
     L --> M
     M --> N["Return structured output + _debug"]
     N --> O["Answerer uses domain + slots<br/>and resolved_id if present"]
+
+Intent           → What the user wants
+Domain           → Where the question goes
+Entities         → Key objects in the question
+Resolved Entity  → Exact database document
