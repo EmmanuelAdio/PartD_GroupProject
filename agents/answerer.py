@@ -13,7 +13,13 @@ from bson import ObjectId
 load_dotenv()
 
 MONGODB_URI = os.getenv("MONGODB_URI")
+# Knowledge DB (where courses/accommodation live)
 MONGODB_KNOWLEDGE_DB = os.getenv("MONGODB_KNOWLEDGE_DB") or os.getenv("MONGODB_DB") or "open_day_knowledge"
+
+# Strict-mode toggle:
+# - False (default): if requested_fields is present, ONLY show requested sections (no base metadata)
+# - True: include base metadata even in strict mode
+STRICT_INCLUDE_METADATA = os.getenv("STRICT_INCLUDE_METADATA", "0") == "1"
 
 if not MONGODB_URI:
     raise RuntimeError("MONGODB_URI is not set. Put it in your environment or .env file.")
@@ -99,7 +105,6 @@ def _find_one_token_and(collection: str, field: str, query: str, min_tokens: int
     toks = _tokenize(query)
     if len(toks) < min_tokens:
         return None
-    # Require multiple tokens to appear somewhere in the field
     and_clauses = [{field: re.compile(re.escape(t), re.I)} for t in toks[:6]]
     return db[collection].find_one({"$and": and_clauses})
 
@@ -136,42 +141,59 @@ def _format_prices(room_types: List[Dict[str, Any]]) -> str:
 
 
 def _format_hall_answer(h: Dict[str, Any], requested_fields: List[str]) -> str:
+    """
+    Precision rule:
+    - If requested_fields is non-empty => STRICT mode: only return requested sections.
+    - If requested_fields empty => full "profile" answer.
+    """
     name = h.get("name", "Hall")
+    url = _safe_get_url(h)
+
+    rf = set(requested_fields or [])
+    strict = bool(rf)
+
     short = (h.get("short_description") or "").strip()
     address = (h.get("address") or "").strip()
     catering = (h.get("catering_type") or "").strip()
-
     facilities = ", ".join(h.get("facilities") or [])
     services = "; ".join(h.get("services") or [])
-
     email = (h.get("contact_email") or "").strip()
     phone = (h.get("contact_phone") or "").strip()
-    url = _safe_get_url(h)
 
-    want_prices = ("accommodation_prices" in requested_fields) or ("room_types" in requested_fields) or (not requested_fields)
-    want_facilities = ("facilities" in requested_fields) or (not requested_fields)
-    want_contact = ("contact" in requested_fields) or (not requested_fields)
+    if strict:
+        sections: List[str] = [f"**{name}**"]  # keep title for halls (usually helpful)
 
-    out = (
-        f"**{name}**\n"
-        f"{short}\n\n"
-        f"**Address:** {address or '—'}\n"
-        f"**Catering:** {catering or '—'}\n"
-    )
+        if "facilities" in rf:
+            sections.append(f"**Facilities:** {facilities or '—'}")
+            sections.append(f"**Cleaning/services:** {services or '—'}")
 
-    if want_facilities:
-        out += f"\n**Facilities:** {facilities or '—'}\n"
-        out += f"**Cleaning/services:** {services or '—'}\n"
+        if "contact" in rf:
+            sections.append(f"**Contact:** {email or '—'} | {phone or '—'}")
 
-    if want_prices:
-        prices_block = _format_prices(h.get("room_types") or [])
-        out += f"\n**Room types & prices:**\n{prices_block}\n"
+        if "room_types" in rf or "accommodation_prices" in rf:
+            prices_block = _format_prices(h.get("room_types") or [])
+            sections.append(f"**Room types & prices:**\n{prices_block}")
 
-    if want_contact:
-        out += f"\n**Contact:** {email or '—'} | {phone or '—'}\n"
+        if len(sections) == 1:
+            prices_block = _format_prices(h.get("room_types") or [])
+            sections.append(f"**Room types & prices:**\n{prices_block}")
 
-    out += f"**Official page:** {url}\n"
-    return out
+        sections.append(f"**Official page:** {url}")
+        return "\n\n".join(sections)
+
+    # Non-strict: full answer
+    sections2: List[str] = [f"**{name}**"]
+    if short:
+        sections2.append(short)
+    sections2.append(f"**Address:** {address or '—'}")
+    sections2.append(f"**Catering:** {catering or '—'}")
+    sections2.append(f"**Facilities:** {facilities or '—'}")
+    sections2.append(f"**Cleaning/services:** {services or '—'}")
+    prices_block = _format_prices(h.get("room_types") or [])
+    sections2.append(f"**Room types & prices:**\n{prices_block}")
+    sections2.append(f"**Contact:** {email or '—'} | {phone or '—'}")
+    sections2.append(f"**Official page:** {url}")
+    return "\n\n".join([s for s in sections2 if str(s).strip() != ""])
 
 
 # ----------------------------
@@ -231,7 +253,7 @@ def _format_modules(course: Dict[str, Any]) -> str:
         if isinstance(mods, list):
             printed = 0
             for m in mods:
-                if printed >= 20:
+                if printed >= 25:
                     break
                 if isinstance(m, str) and m.strip():
                     lines.append(f"- {m.strip()}")
@@ -256,6 +278,12 @@ def _format_modules(course: Dict[str, Any]) -> str:
 
 
 def _format_course_answer(course: Dict[str, Any], intent: Optional[str], requested_fields: List[str]) -> str:
+    """
+    Precision rule:
+    - If requested_fields is non-empty => STRICT mode: only return requested sections.
+      (By default, strict mode does NOT include base metadata.)
+    - If requested_fields empty => intent-based default.
+    """
     title = course.get("course_title") or course.get("title") or "Course"
     degree = course.get("degree_classification") or course.get("degree") or "—"
     subject = course.get("subject_area") or course.get("subject") or "—"
@@ -272,46 +300,75 @@ def _format_course_answer(course: Dict[str, Any], intent: Optional[str], request
         f"**Degree:** {degree}\n"
         f"**Subject area:** {subject}\n"
         f"**UCAS codes:** {ucas}\n"
-        f"**Start date:** {start_date}\n\n"
+        f"**Start date:** {start_date}\n"
     )
 
-    want_modules = ("modules" in requested_fields) or ("course_content" in requested_fields)
-    want_entry = ("entry_requirements" in requested_fields) or (intent == "ask_entry_requirements")
-    want_fees = ("fees" in requested_fields) or (intent == "ask_fees")
+    rf = set(requested_fields or [])
+    strict = bool(rf)
 
-    if want_modules:
-        modules_str = _format_modules(course)
-        return (
-            base
-            + f"**Modules / course content (if available):**\n{modules_str}\n\n"
-            + (f"**Typical offer / entry requirements:**\n{entry}\n\n" if entry and entry != "—" else "")
-            + f"**Official page:** {url}\n"
-        )
+    # STRICT mode: only requested sections
+    if strict:
+        sections: List[str] = []
 
-    if want_entry:
-        return base + f"**Typical offer / entry requirements:**\n{entry}\n\n**Official page:** {url}\n"
+        if STRICT_INCLUDE_METADATA:
+            sections.append(base)
 
-    if want_fees:
-        return base + f"**Fees (if available):**\n{_format_fees(fees)}\n\n**Official page:** {url}\n"
+        if "overview" in rf:
+            sections.append(f"**Overview:**\n{overview}")
 
-    out = base + f"{overview}\n\n"
-    if entry and entry != "—":
-        out += f"**Typical offer / entry requirements:**\n{entry}\n\n"
-    if isinstance(fees, dict) and fees:
-        out += f"**Fees (if available):**\n{_format_fees(fees)}\n\n"
-    out += f"**Official page:** {url}\n"
-    return out
+        if "entry_requirements" in rf:
+            sections.append(f"**Typical offer / entry requirements:**\n{entry}")
+
+        if "fees" in rf:
+            sections.append(f"**Fees (if available):**\n{_format_fees(fees)}")
+
+        if "modules" in rf or "course_content" in rf:
+            sections.append(f"**Modules / course content (if available):**\n{_format_modules(course)}")
+
+        if not sections:
+            # fall back using intent
+            if intent == "ask_fees":
+                sections.append(f"**Fees (if available):**\n{_format_fees(fees)}")
+            elif intent == "ask_entry_requirements":
+                sections.append(f"**Typical offer / entry requirements:**\n{entry}")
+            else:
+                sections.append(f"**Overview:**\n{overview}")
+
+        sections.append(f"**Official page:** {url}")
+        return "\n\n".join(sections)
+
+    # Non-strict: intent-based default (includes metadata)
+    sections2: List[str] = [base]
+
+    if intent == "ask_fees":
+        sections2.append(f"**Fees (if available):**\n{_format_fees(fees)}")
+        sections2.append(f"**Official page:** {url}")
+        return "\n\n".join(sections2)
+
+    if intent == "ask_entry_requirements":
+        sections2.append(f"**Typical offer / entry requirements:**\n{entry}")
+        sections2.append(f"**Official page:** {url}")
+        return "\n\n".join(sections2)
+
+    if intent == "ask_course_info":
+        sections2.append(f"**Overview:**\n{overview}")
+        sections2.append(f"**Modules / course content (if available):**\n{_format_modules(course)}")
+        sections2.append(f"**Official page:** {url}")
+        return "\n\n".join(sections2)
+
+    sections2.append(f"**Overview:**\n{overview}")
+    sections2.append(f"**Official page:** {url}")
+    return "\n\n".join(sections2)
 
 
 # ----------------------------
-# Course DB-side finders
+# Course & hall DB-side finders
 # ----------------------------
 def _find_course_by_ucas(ucas_code: str) -> Optional[Dict[str, Any]]:
     u = (ucas_code or "").strip()
     if not u:
         return None
     rx = re.compile(rf"^{re.escape(u)}$", re.I)
-    # Try common keys: ucas_codes array, ucas_code string
     doc = db["undergraduate_courses"].find_one({"ucas_codes": rx})
     if not doc:
         doc = db["undergraduate_courses"].find_one({"ucas_code": rx})
@@ -323,17 +380,14 @@ def _find_course_by_title(query: str) -> Tuple[Optional[Dict[str, Any]], Dict[st
     if not q:
         return None, {"strategy": "no_query"}
 
-    # exact
     doc = _find_one_exact("undergraduate_courses", "course_title", q)
     if doc:
         return doc, {"strategy": "exact_title"}
 
-    # contains
     doc = _find_one_contains("undergraduate_courses", "course_title", q)
     if doc:
         return doc, {"strategy": "contains_title"}
 
-    # token AND
     doc = _find_one_token_and("undergraduate_courses", "course_title", q, min_tokens=2)
     if doc:
         return doc, {"strategy": "token_and_title"}
@@ -361,6 +415,13 @@ def _find_hall_by_name(query: str) -> Tuple[Optional[Dict[str, Any]], Dict[str, 
     return None, {"strategy": "no_match"}
 
 
+def _extract_ucas_from_text(text: str) -> Optional[str]:
+    if not text:
+        return None
+    m = re.search(r"\b[A-Z]{1,2}\d{3}\b", text)
+    return m.group(0) if m else None
+
+
 # ----------------------------
 # Main Answerer
 # ----------------------------
@@ -375,7 +436,7 @@ def answer(processed: Dict[str, Any]) -> Dict[str, Any]:
     pdebug = processed.get("_debug") or {}
     resolved = pdebug.get("resolved") or {}
     resolved_id = resolved.get("resolved_id")
-    resolved_collection = resolved.get("collection")  # <-- NEW: respect processor
+    resolved_collection = resolved.get("collection")
 
     conf = processed.get("confidence") or {}
     base_conf = 0.6 * float(conf.get("intent", 0.0) or 0.0) + 0.4 * float(conf.get("domain", 0.0) or 0.0)
@@ -404,7 +465,6 @@ def answer(processed: Dict[str, Any]) -> Dict[str, Any]:
     # Accommodation
     # ----------------------------
     if domain == "accommodation":
-        # 1) resolved id path (use resolved collection if provided)
         coll = resolved_collection or "accommodation"
         hall = _find_by_object_id(coll, resolved_id) if resolved_id else None
         if hall:
@@ -424,7 +484,6 @@ def answer(processed: Dict[str, Any]) -> Dict[str, Any]:
                 debug=debug,
             ))
 
-        # 2) DB-side match by name
         if slots.get("hall_name"):
             hall_query = slots["hall_name"][0]
         elif slots.get("entity"):
@@ -465,12 +524,11 @@ def answer(processed: Dict[str, Any]) -> Dict[str, Any]:
         ))
 
     # ----------------------------
-    # Course info (+ fees via requested_fields)
+    # Course info (+ fees via requested_fields / intent)
     # ----------------------------
     if domain in {"course_info", "fees_funding"}:
         coll = resolved_collection or "undergraduate_courses"
 
-        # 1) resolved id path
         course = _find_by_object_id(coll, resolved_id) if resolved_id else None
         if course:
             debug["strategy"] = "resolved_id"
@@ -489,15 +547,13 @@ def answer(processed: Dict[str, Any]) -> Dict[str, Any]:
                 debug=debug,
             ))
 
-        # 2) UCAS-first if present
         ucas_query = ""
         if slots.get("ucas_code"):
             ucas_query = slots["ucas_code"][0]
         else:
-            # try to find UCAS-like tokens in raw text as a fallback
-            m = re.search(r"\b[A-Z]{1,2}\d{3}\b", raw_text or "")
-            if m:
-                ucas_query = m.group(0)
+            maybe_ucas = _extract_ucas_from_text(raw_text)
+            if maybe_ucas:
+                ucas_query = maybe_ucas
 
         if ucas_query:
             course = _find_course_by_ucas(ucas_query)
@@ -519,7 +575,6 @@ def answer(processed: Dict[str, Any]) -> Dict[str, Any]:
                     debug=debug,
                 ))
 
-        # 3) DB-side title match
         if slots.get("course_title"):
             course_query = slots["course_title"][0]
         elif slots.get("entity"):
@@ -560,14 +615,14 @@ def answer(processed: Dict[str, Any]) -> Dict[str, Any]:
         ))
 
     # ----------------------------
-    # Other domains (placeholder)
+    # Other domains not implemented yet
     # ----------------------------
     return asdict(AnswererOutput(
         raw_text=raw_text,
         clean_text=clean_text,
         domain=domain,
         intent=intent,
-        answer=f"I can’t answer questions for domain '{domain}' yet (no collection/formatting implemented).",
+        answer=f"I can’t answer questions for domain '{domain}' yet (no retrieval/formatting implemented).",
         sources=[],
         confidence=max(0.1, base_conf),
         debug={**debug, "reason": "domain_not_supported"},
