@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from agents.processor_LLM import processor_agent as processor_agent_LLM
+# from agents.processor_LLM import processor_agent as processor_agent_LLM
 from agents.processor import processor_agent as Processor_agent_Regex
 
 
@@ -57,5 +57,7 @@ def test_process_example_questions(processor) -> None:
 #
 if __name__ == "__main__":
     processor = Processor_agent_Regex  # or processor_agent_LLM
-    test_process_example_questions(processor)
-    print("All example questions processed successfully.")
+#     test_process_example_questions(processor)
+#     print("All example questions processed successfully.")
+
+    print(processor.process("How are you doing?"))
