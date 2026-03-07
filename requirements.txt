@@ -1,6 +1,8 @@
 python-dotenv
 pymongo
 openai
+fastapi
+uvicorn
 langchain
 langchain_community
 langchain-openai

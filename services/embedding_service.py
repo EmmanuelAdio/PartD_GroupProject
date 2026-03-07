@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 from typing import List, Sequence
 
@@ -50,7 +51,11 @@ class EmbeddingService:
 
     def embed_many(self, texts: Sequence[str]) -> List[List[float]]:
         """Embed multiple text strings in batches."""
-        cleaned = [self._clean_text(t) for t in texts if self._clean_text(t)]
+        cleaned = []
+        for t in texts:
+            value = self._clean_text(t)
+            if value:
+                cleaned.append(value)
         if not cleaned:
             return []
 
@@ -71,3 +76,44 @@ class EmbeddingService:
     @staticmethod
     def _clean_text(text: str) -> str:
         return " ".join((text or "").split()).strip()
+
+
+class DeterministicEmbeddingService:
+    """Deterministic local embedder for integration tests without OpenAI."""
+
+    def __init__(self, dim: int = 64) -> None:
+        if dim <= 0:
+            raise ValueError("dim must be a positive integer.")
+        self.dim = dim
+
+    def embed_text(self, text: str) -> List[float]:
+        text = self._clean_text(text)
+        if not text:
+            raise ValueError("Cannot embed an empty string.")
+        return self._vectorize(text)
+
+    def embed_many(self, texts: Sequence[str]) -> List[List[float]]:
+        vectors: List[List[float]] = []
+        for text in texts:
+            cleaned = self._clean_text(text)
+            if cleaned:
+                vectors.append(self._vectorize(cleaned))
+        return vectors
+
+    def get_model_name(self) -> str:
+        return f"deterministic-hash-{self.dim}"
+
+    @staticmethod
+    def _clean_text(text: str) -> str:
+        return " ".join((text or "").split()).strip()
+
+    def _vectorize(self, text: str) -> List[float]:
+        buffer = bytearray()
+        counter = 0
+        while len(buffer) < self.dim:
+            digest = hashlib.sha256(f"{text}|{counter}".encode("utf-8")).digest()
+            buffer.extend(digest)
+            counter += 1
+
+        values = list(buffer[: self.dim])
+        return [((v / 255.0) * 2.0) - 1.0 for v in values]

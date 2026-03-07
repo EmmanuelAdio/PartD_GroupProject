@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 from pymongo import MongoClient, ReplaceOne
 try:
@@ -23,6 +24,7 @@ class MongoRepo:
         mongo_uri: Optional[str] = None,
         db_name: str = "open_day_knowledge",
         collection_name: str = "kb_chuncks",
+        manifest_collection_name: str = "kb_ingestion_manifest",
     ) -> None:
         if load_dotenv is not None:
             load_dotenv()
@@ -34,6 +36,8 @@ class MongoRepo:
         self.client = MongoClient(self.mongo_uri)
         self.db = self.client[db_name]
         self.collection = self.db[collection_name]
+        self.manifest_collection = self.db[manifest_collection_name]
+        self.ensure_indexes()
 
     def ping(self) -> None:
         self.client.admin.command("ping")
@@ -56,6 +60,53 @@ class MongoRepo:
             "modified_count": int(result.modified_count),
             "matched_count": int(result.matched_count),
         }
+
+    def ensure_indexes(self) -> None:
+        self.collection.create_index("chunk_id", unique=True, name="chunk_id_unique")
+        self.collection.create_index("source_id", name="source_id_idx")
+        self.collection.create_index("version", name="version_idx")
+        self.manifest_collection.create_index("source_id", unique=True, name="manifest_source_unique")
+
+    def get_existing_chunk_ids(self, chunk_ids: Iterable[str]) -> Set[str]:
+        chunk_ids = [c for c in chunk_ids if c]
+        if not chunk_ids:
+            return set()
+        cursor = self.collection.find(
+            {"chunk_id": {"$in": chunk_ids}},
+            {"_id": 0, "chunk_id": 1},
+        )
+        return {doc["chunk_id"] for doc in cursor if "chunk_id" in doc}
+
+    def count_source_records(self, source_id: str) -> int:
+        return int(self.collection.count_documents({"source_id": source_id}))
+
+    def delete_source_records(self, source_id: str) -> int:
+        result = self.collection.delete_many({"source_id": source_id})
+        return int(result.deleted_count)
+
+    def get_source_manifest(self, source_id: str) -> Optional[Dict[str, Any]]:
+        return self.manifest_collection.find_one({"source_id": source_id}, {"_id": 0})
+
+    def upsert_source_manifest(
+        self,
+        source_id: str,
+        source_hash: str,
+        pipeline_hash: str,
+        pipeline_signature: Dict[str, Any],
+        source_path: str,
+        records_in_db: int,
+    ) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        payload = {
+            "source_id": source_id,
+            "source_hash": source_hash,
+            "pipeline_hash": pipeline_hash,
+            "pipeline_signature": pipeline_signature,
+            "source_path": source_path,
+            "records_in_db": int(records_in_db),
+            "updated_at": now,
+        }
+        self.manifest_collection.replace_one({"source_id": source_id}, payload, upsert=True)
 
     @staticmethod
     def _read_env_value(key: str, env_path: str = ".env") -> Optional[str]:

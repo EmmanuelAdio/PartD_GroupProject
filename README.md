@@ -1,55 +1,39 @@
 # PartD Group Project
 
-This repository currently implements and tests a JSON-first ingestion pipeline for RAG data, with optional upload to MongoDB.
+This repository currently focuses on a working ingestion pipeline for RAG data:
+1. Read JSON source files from `data/`
+2. Normalize + chunk into retrieval-friendly text blocks
+3. Add domain/entity tags (heuristic or LLM-assisted)
+4. Generate embeddings (deterministic local or OpenAI)
+5. Upsert chunk records into MongoDB (`open_day_knowledge.kb_chuncks`)
 
-The active workflow is:
-1. Load source JSON from `data/`
-2. Normalize and chunk it with `IngestionService`
-3. Generate embeddings (fake/local or OpenAI)
-4. Build `ChunkRecord` objects
-5. Optionally upsert to MongoDB (`open_day_knowledge.kb_chuncks`)
+## Current status
 
-## Current project status
-
-Active, implemented modules:
-- `schemas/models.py`: Pydantic models (`Document`, `Chunk`, `ChunkTags`, `ChunkRecord`)
-- `services/ingestion_service.py`: ingestion pipeline and chunk record creation
-- `services/embedding_service.py`: OpenAI embedding wrapper
-- `services/mongo_repo.py`: MongoDB adapter with bulk upsert by `chunk_id`
-- `test_ingestion_service.py`: CLI test runner for local and Mongo integration tests
-
-In-progress/stub modules (currently empty):
+Implemented:
 - `app/main.py`
 - `app/orchestrator.py`
+- `services/ingestion_service.py`
+- `services/embedding_service.py`
+- `services/llm_services.py`
+- `services/mongo_repo.py`
+- `schemas/models.py`
+- `test_ingestion_service.py`
+
+Still stubs/empty:
 - `agents/processor_agent.py`
 - `services/retriever_service.py`
-- `services/llm_services.py`
-
-## Repository layout
-
-Key paths:
-- `data/`: input JSON files (currently includes `accommodation_halls.json`)
-- `data/chunk_previews/`: generated preview outputs from tests
-- `services/`: ingestion, embedding, mongo upload logic
-- `schemas/`: shared data models
-- `test_ingestion_service.py`: main test entrypoint
-- `RAG_chatbot_demo.ipynb`: earlier notebook workflow (Mongo DB name: `open_day_knowledge`)
 
 ## Setup
 
-### 1. Install dependencies
+Run from repo root:
+`c:\Users\Emman\OneDrive\Documents\GitHub\PartD_GroupProject`
 
+Install dependencies:
 ```bash
 pip install -r requirements.txt
-pip install pymongo python-dotenv
 ```
 
-`python-dotenv` is optional because the code has a fallback parser for `.env`, but installing it is recommended.
-
-### 2. Configure environment
-
-Create `.env` in project root:
-
+Create `.env`:
 ```env
 MONGODB_URI="your_mongodb_connection_string"
 OPENAI_API_KEY="your_openai_api_key"
@@ -57,174 +41,272 @@ OPENAI_API_KEY="your_openai_api_key"
 
 Notes:
 - `MONGODB_URI` is required for Mongo upload tests.
-- `OPENAI_API_KEY` is only required if you run with `--embedder openai`.
+- `OPENAI_API_KEY` is required for `--embedder openai` and `--tagger llm`.
 
-## How to test and run data integration right now
+## Main application ingestion (app.main)
 
-All commands below should be run from repo root:
-`c:\Users\Emman\OneDrive\Documents\GitHub\PartD_GroupProject`
+`app.main` now supports both:
+- CLI-based ingestion runs
+- FastAPI endpoints (`/ingest/*`) when launched by uvicorn
 
-### A. Run ingestion test on all JSON files (local only, no Mongo)
+### 1) Initial ingestion from CLI (all data files)
+
+```bash
+python -m app.main --embedder fake --tagger heuristic
+```
+
+Expected result:
+- First run ingests all JSON sources and returns non-zero `total_new_records`.
+- Example observed: `total_new_records: 570`.
+
+### 2) Incremental rerun (skip unchanged sources)
+
+Run the same command again:
+```bash
+python -m app.main --embedder fake --tagger heuristic
+```
+
+Expected result:
+- `ingested_sources` should be empty.
+- Sources appear in `skipped_sources` with reason `unchanged_source_and_pipeline`.
+- `total_new_records: 0`.
+
+How skip works:
+- Source-level manifest check:
+  source file hash + pipeline hash + existing docs.
+- Chunk-level check:
+  existing `chunk_id`s are filtered before tagging/embedding to avoid cost.
+
+### 3) Force full reingest
+
+```bash
+python -m app.main --embedder fake --tagger heuristic --full-reingest
+```
+
+### 4) Ingest one file only
+
+```bash
+python -m app.main --file accommodation_halls.json --embedder fake --tagger heuristic
+```
+
+### 5) Use OpenAI embeddings and/or LLM tagging
+
+```bash
+python -m app.main --embedder openai --tagger llm --llm-model gpt-4o-mini
+```
+
+### 6) Run FastAPI server with uvicorn
+
+```bash
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+If port `8000` is in use, use another port:
+```bash
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
+```
+
+Available endpoints:
+- `GET /health`
+- `POST /ingest/all`
+- `POST /ingest/file`
+- `POST /ingest/payload`
+
+## Ingestion test commands
+
+### 1) Local test for all JSON files
 
 Command:
 ```bash
-python test_ingestion_service.py
+python test_ingestion_service.py --embedder fake --tagger heuristic
 ```
 
 What it does:
-- Scans `data/*.json`
-- Skips files ending with `_chunk_records_preview.json`
-- Ingests each JSON file
-- Prints record count and first chunk preview
+- Ingests all `data/*.json` except preview files.
+- Uses deterministic local embeddings.
+- Uses heuristic domain/entity tagging.
 
-Expected output (example):
+Expected output example:
 ```text
 [accommodation_halls.json]
   records: 44
-  first chunk id: 50f7658e8e5df42af88d80423c04ea0200678853
-  first chunk preview: [0].name: Butler Court [0].type: hall ...
+  first chunk domain: accommodation
+
+[all_ug_courses.json]
+  records: 521
+  first chunk domain: courses
+
+[contextual_offer_faqs.json]
+  records: 2
+  first chunk domain: admissions
+
+[lboro_sport_faqs.json]
+  records: 3
+  first chunk domain: sports
+
+[LOCAL SUMMARY] total records built: 570
 ```
 
-### B. Run ingestion test for one file
+### 2) Local test for one file
 
 Command:
 ```bash
-python test_ingestion_service.py --file accommodation_halls.json
+python test_ingestion_service.py --file accommodation_halls.json --embedder fake --tagger heuristic
 ```
 
-What it does:
-- Tests only `data/accommodation_halls.json`
-
-Expected output:
-- Same format as above, for that single file.
-
-### C. Generate preview JSON files for created chunk records
-
-Command:
-```bash
-python test_ingestion_service.py --write-previews
-```
-
-What it does:
-- Runs ingestion locally
-- Writes output records to:
-  - `data/chunk_previews/<source>_chunk_records_preview.json`
-
-Expected output (example):
+Expected output example:
 ```text
 [accommodation_halls.json]
   records: 44
-  first chunk id: 50f7658e8e5df42af88d80423c04ea0200678853
-  first chunk preview: [0].name: Butler Court [0].type: hall ...
-  wrote preview: data\chunk_previews\accommodation_halls_chunk_records_preview.json
+  first chunk id: ...
+  first chunk domain: accommodation
 ```
 
-### D. Mongo integration test: upload accommodation chunks to MongoDB
+### 3) Local test + write preview records
 
 Command:
 ```bash
-python test_ingestion_service.py --test-mongo-upload --embedder fake
+python test_ingestion_service.py --embedder fake --tagger heuristic --write-previews
 ```
 
-Default Mongo target:
-- Database: `open_day_knowledge` (same as notebook)
-- Collection: `kb_chuncks`
+What it writes:
+- `data/chunk_previews/<source>_chunk_records_preview.json`
+
+Expected output includes:
+```text
+wrote preview: data\chunk_previews\accommodation_halls_chunk_records_preview.json
+```
+
+## Mongo integration commands
+
+### 4) Upload all JSON files to MongoDB (recommended baseline)
+
+Command:
+```bash
+python test_ingestion_service.py --test-mongo-upload --embedder fake --tagger heuristic --clear-source-before-upload
+```
 
 What it does:
-- Loads `data/accommodation_halls.json`
-- Ingests and builds chunk records
-- Upserts to Mongo with `chunk_id` as unique match key
-- Verifies upload count by `source_id=accommodation_halls`
+- Ingests all JSON files.
+- Clears existing docs per `source_id` before upload.
+- Upserts into `open_day_knowledge.kb_chuncks`.
+- Prints local vs Mongo counts by source.
 
-Expected output (example):
+Expected output example:
 ```text
 [MONGO UPLOAD TEST]
   database: open_day_knowledge
   collection: kb_chuncks
+  embedder: fake
+  tagger: heuristic
+  files to ingest: 4
+
+[accommodation_halls.json]
   local records built: 44
-  records returned: 44
   records in Mongo by source_id=accommodation_halls: 44
+
+[all_ug_courses.json]
+  local records built: 521
+  records in Mongo by source_id=all_ug_courses: 521
+
+[contextual_offer_faqs.json]
+  local records built: 2
+  records in Mongo by source_id=contextual_offer_faqs: 2
+
+[lboro_sport_faqs.json]
+  local records built: 3
+  records in Mongo by source_id=lboro_sport_faqs: 3
+
+[MONGO SUMMARY]
+  total local records built: 570
+  total Mongo records across ingested source_ids: 570
 ```
 
-### E. Override Mongo target database/collection
+### 5) Upload one file to MongoDB
 
 Command:
 ```bash
-python test_ingestion_service.py --test-mongo-upload --embedder fake --mongo-db open_day_knowledge --mongo-collection kb_chuncks
+python test_ingestion_service.py --file accommodation_halls.json --test-mongo-upload --embedder fake --tagger heuristic --clear-source-before-upload
 ```
 
-Useful when testing in separate environments.
-
-### F. Use OpenAI embeddings instead of fake embeddings
+### 6) Upload with LLM tagging enabled
 
 Command:
 ```bash
-python test_ingestion_service.py --test-mongo-upload --embedder openai
+python test_ingestion_service.py --test-mongo-upload --embedder fake --tagger llm --llm-model gpt-4o-mini --clear-source-before-upload
 ```
 
-Requirements:
-- `OPENAI_API_KEY` must be set
-- internet access to OpenAI API
+Notes:
+- Uses `LLMService` for chunk tagging.
+- Falls back to heuristics if LLM tagging fails on a chunk.
 
-## What gets stored in Mongo
+### 7) Use OpenAI embeddings
 
-Uploaded document shape is based on `ChunkRecord` and includes:
-- `chunk_id`, `source_id`, `source_type`
-- `title`, `url`
-- `text`
-- `embedding`
-- `domain`, `entity_tags`, `section`, `order`
-- `metadata`, `version`
+Command:
+```bash
+python test_ingestion_service.py --test-mongo-upload --embedder openai --tagger heuristic --clear-source-before-upload
+```
 
-Upsert behavior:
-- `MongoRepo.upsert_chunks()` uses `ReplaceOne({"chunk_id": rec.chunk_id}, ..., upsert=True)`
-- Re-running ingestion updates existing chunk records instead of duplicating by `chunk_id`.
+### 8) Override Mongo target
+
+Command:
+```bash
+python test_ingestion_service.py --test-mongo-upload --mongo-db open_day_knowledge --mongo-collection kb_chuncks
+```
+
+## Version numbers in ingestion records
+
+Where version comes from:
+- `ChunkRecord.version` is set by `IngestionService(version=...)`.
+- In `test_ingestion_service.py`, the service is currently created with `version="test-v2"`.
+- If not set explicitly, `IngestionService` defaults to `version="v1"`.
+
+What this means now:
+- Version values are currently manual labels, not auto-generated.
+- They are useful to track which ingestion logic produced a given record set.
+
+Recommended versioning rule (next step):
+1. Use semantic labels: `ingest-v1`, `ingest-v2`, etc.
+2. Bump when chunking/tagging/embedding logic changes.
+3. Keep old data queryable by filtering on `version`.
+
+## What is still missing in this ingestion pipeline
+
+1. Strong idempotency key strategy across model changes
+Currently `chunk_id` is content-derived; changing chunk format can create new ids unexpectedly. A stable source+path strategy would help.
+
+2. Vector index bootstrap for MongoDB Atlas
+Regular Mongo indexes are created automatically, but Atlas vector index setup is still manual.
+
+3. Retry/backoff around external API calls
+OpenAI embedding/tagging calls should have retry policy and better error telemetry.
+
+4. Cost and throughput controls
+No rate limiting, token budgeting, or batching policy tuning for LLM tagging at scale.
+
+5. Quality evaluation for tags
+No automated evaluation set yet to measure domain/entity tagging precision/recall.
+
+6. Ingestion observability
+No run report persisted yet (start/end time, records processed, failures by source).
+
+7. Lifecycle tooling
+No explicit rollback/rebuild command per source and version beyond manual deletes.
 
 ## Troubleshooting
 
 ### `MONGODB_URI is not set`
+- Add it to `.env` or shell environment.
 
-Fix:
-- add `MONGODB_URI=...` to `.env`
-- or export it in your shell before running commands
+### `OPENAI_API_KEY is not set`
+- Required for `--embedder openai` and `--tagger llm`.
 
-### `ModuleNotFoundError` for dependencies
+### Mongo DNS/timeout errors
+- Check internet access.
+- Check Atlas network allowlist/firewall.
+- Check URI correctness.
 
-Fix:
-```bash
-pip install -r requirements.txt
-pip install pymongo python-dotenv
-```
-
-### Mongo DNS / timeout / connection errors
-
-Likely causes:
-- no internet access
-- blocked DNS/network policy
-- invalid Atlas/network allowlist settings
-
-### Record count mismatch
-
-If `local records built` and Mongo count differ:
-- rerun command and check for write errors
-- verify `source_id` filter is correct
-- check collection name is exactly `kb_chuncks`
-
-## Quick command reference
-
-```bash
-# Local ingestion test (all JSON files)
-python test_ingestion_service.py
-
-# Local ingestion test (single file)
-python test_ingestion_service.py --file accommodation_halls.json
-
-# Local ingestion + preview files
-python test_ingestion_service.py --write-previews
-
-# Mongo upload integration test (recommended first pass)
-python test_ingestion_service.py --test-mongo-upload --embedder fake
-
-# Mongo upload with OpenAI embeddings
-python test_ingestion_service.py --test-mongo-upload --embedder openai
-```
+### Count mismatch (local vs Mongo)
+- Re-run with `--clear-source-before-upload`.
+- Ensure `--mongo-collection kb_chuncks`.
+- Check if previous versions/data exist in same source_id.
