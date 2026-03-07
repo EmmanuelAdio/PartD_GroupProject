@@ -74,8 +74,9 @@ class IngestionService:
             record = self._build_record(doc, chunk, tags, vec)
             records.append(record)
 
-        # 5) upsert
-        self.repo.upsert_chunks(records)
+        # 5) upsert (optional)
+        if self.repo is not None:
+            self.repo.upsert_chunks(records)
         return len(records), records
     
     # ---------------------------

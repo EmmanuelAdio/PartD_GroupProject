@@ -1,85 +1,230 @@
-# PartD_GroupProject
+# PartD Group Project
 
-## Testing the Processor Agent
+This repository currently implements and tests a JSON-first ingestion pipeline for RAG data, with optional upload to MongoDB.
 
-### Prerequisites
+The active workflow is:
+1. Load source JSON from `data/`
+2. Normalize and chunk it with `IngestionService`
+3. Generate embeddings (fake/local or OpenAI)
+4. Build `ChunkRecord` objects
+5. Optionally upsert to MongoDB (`open_day_knowledge.kb_chuncks`)
 
-1. **Set up MongoDB credentials**
-   
-   Create a `.env` file in the project root with your MongoDB connection details:
-   ```
-   MONGODB_URI="your_mongodb_connection_string"
-   MONGODB_DB="partd_group"
-   ```
+## Current project status
 
-2. **Install dependencies**
-   ```bash
-   pip install python-dotenv pymongo
-   ```
+Active, implemented modules:
+- `schemas/models.py`: Pydantic models (`Document`, `Chunk`, `ChunkTags`, `ChunkRecord`)
+- `services/ingestion_service.py`: ingestion pipeline and chunk record creation
+- `services/embedding_service.py`: OpenAI embedding wrapper
+- `services/mongo_repo.py`: MongoDB adapter with bulk upsert by `chunk_id`
+- `test_ingestion_service.py`: CLI test runner for local and Mongo integration tests
 
-### Running the Test
+In-progress/stub modules (currently empty):
+- `app/main.py`
+- `app/orchestrator.py`
+- `agents/processor_agent.py`
+- `services/retriever_service.py`
+- `services/llm_services.py`
 
-Execute the processor agent test from the project root:
+## Repository layout
+
+Key paths:
+- `data/`: input JSON files (currently includes `accommodation_halls.json`)
+- `data/chunk_previews/`: generated preview outputs from tests
+- `services/`: ingestion, embedding, mongo upload logic
+- `schemas/`: shared data models
+- `test_ingestion_service.py`: main test entrypoint
+- `RAG_chatbot_demo.ipynb`: earlier notebook workflow (Mongo DB name: `open_day_knowledge`)
+
+## Setup
+
+### 1. Install dependencies
 
 ```bash
-python tests/test_processor.py
+pip install -r requirements.txt
+pip install pymongo python-dotenv
 ```
 
-This will:
-- Load example questions from `ExampleQuestions.txt`
-- Process each question through the processor agent
-- Validate the output structure contains all required fields
-- Print the processed output for each question
+`python-dotenv` is optional because the code has a fallback parser for `.env`, but installing it is recommended.
 
-### Expected Output
+### 2. Configure environment
 
-Each processed question returns a dictionary with:
-- `raw_text` / `clean_text` - Original and normalised input
-- `domain` - Detected domain (e.g., `location`, `course_info`)
-- `intent` - Classified intent (e.g., `ask_directions`, `ask_fees`)
-- `slots` - Extracted entities
-- `retrieval_query` - Query string for the retrieval system
-- `confidence` - Confidence scores for intent and domain
+Create `.env` in project root:
 
+```env
+MONGODB_URI="your_mongodb_connection_string"
+OPENAI_API_KEY="your_openai_api_key"
+```
 
+Notes:
+- `MONGODB_URI` is required for Mongo upload tests.
+- `OPENAI_API_KEY` is only required if you run with `--embedder openai`.
 
-# ProcessorAgent_LLM (`agents/processor_LLM.py`) — How it Works
+## How to test and run data integration right now
 
-## Purpose
-`ProcessorAgent_LLM` converts a **raw user question** into a **structured payload** that downstream components (especially the Answerer) can use reliably.
+All commands below should be run from repo root:
+`c:\Users\Emman\OneDrive\Documents\GitHub\PartD_GroupProject`
 
-It solves the problem: *“Users speak naturally, but the Answerer needs a predictable structure.”*
+### A. Run ingestion test on all JSON files (local only, no Mongo)
 
-**Inputs:** free-text user query  
-**Outputs:** a dict containing:
-- `intent` (one of `ALLOWED_INTENTS`)
-- `domain` (routing category for the Answerer)
-- `slots` (extracted entities like course title / hall name / UCAS)
-- `requested_fields` (what the user is asking for: modules, fees, etc.)
-- `retrieval_query` (debuggable string for future retrieval)
-- `_debug` (how decisions were made)
+Command:
+```bash
+python test_ingestion_service.py
+```
 
----
+What it does:
+- Scans `data/*.json`
+- Skips files ending with `_chunk_records_preview.json`
+- Ingests each JSON file
+- Prints record count and first chunk preview
 
-## High-level Flow (Architecture)
+Expected output (example):
+```text
+[accommodation_halls.json]
+  records: 44
+  first chunk id: 50f7658e8e5df42af88d80423c04ea0200678853
+  first chunk preview: [0].name: Butler Court [0].type: hall ...
+```
 
-```mermaid
-flowchart TD
-    A["User question"] --> B["process(text)"]
-    B --> C["Normalize text<br/>(lowercase + Unicode NFKC)"]
-    C --> D{"OpenAI available?<br/>OPENAI_API_KEY set"}
-    D -- "Yes" --> E["LLM extraction<br/>intent + entities + requested_fields"]
-    D -- "No" --> F["Fallback intent classifier<br/>utils.llm_intent"]
-    E --> G{"Valid intent in ALLOWED_INTENTS?"}
-    G -- "Yes" --> H["Map intent → domain"]
-    G -- "No" --> F
-    F --> H["Map intent → domain"]
-    H --> I["Build slots from entities<br/>(and generic entity list)"]
-    I --> J{"Entity resolution enabled?<br/>ENABLE_ENTITY_RESOLUTION=1<br/>and Mongo connected"}
-    J -- "Yes" --> K["Resolve entity to exact DB doc<br/>accommodation or undergraduate_courses"]
-    J -- "No" --> L["Skip resolution"]
-    K --> M["Build retrieval_query (debug string)"]
-    L --> M
-    M --> N["Return structured output + _debug"]
-    N --> O["Answerer uses domain + slots<br/>and resolved_id if present"]
+### B. Run ingestion test for one file
 
+Command:
+```bash
+python test_ingestion_service.py --file accommodation_halls.json
+```
+
+What it does:
+- Tests only `data/accommodation_halls.json`
+
+Expected output:
+- Same format as above, for that single file.
+
+### C. Generate preview JSON files for created chunk records
+
+Command:
+```bash
+python test_ingestion_service.py --write-previews
+```
+
+What it does:
+- Runs ingestion locally
+- Writes output records to:
+  - `data/chunk_previews/<source>_chunk_records_preview.json`
+
+Expected output (example):
+```text
+[accommodation_halls.json]
+  records: 44
+  first chunk id: 50f7658e8e5df42af88d80423c04ea0200678853
+  first chunk preview: [0].name: Butler Court [0].type: hall ...
+  wrote preview: data\chunk_previews\accommodation_halls_chunk_records_preview.json
+```
+
+### D. Mongo integration test: upload accommodation chunks to MongoDB
+
+Command:
+```bash
+python test_ingestion_service.py --test-mongo-upload --embedder fake
+```
+
+Default Mongo target:
+- Database: `open_day_knowledge` (same as notebook)
+- Collection: `kb_chuncks`
+
+What it does:
+- Loads `data/accommodation_halls.json`
+- Ingests and builds chunk records
+- Upserts to Mongo with `chunk_id` as unique match key
+- Verifies upload count by `source_id=accommodation_halls`
+
+Expected output (example):
+```text
+[MONGO UPLOAD TEST]
+  database: open_day_knowledge
+  collection: kb_chuncks
+  local records built: 44
+  records returned: 44
+  records in Mongo by source_id=accommodation_halls: 44
+```
+
+### E. Override Mongo target database/collection
+
+Command:
+```bash
+python test_ingestion_service.py --test-mongo-upload --embedder fake --mongo-db open_day_knowledge --mongo-collection kb_chuncks
+```
+
+Useful when testing in separate environments.
+
+### F. Use OpenAI embeddings instead of fake embeddings
+
+Command:
+```bash
+python test_ingestion_service.py --test-mongo-upload --embedder openai
+```
+
+Requirements:
+- `OPENAI_API_KEY` must be set
+- internet access to OpenAI API
+
+## What gets stored in Mongo
+
+Uploaded document shape is based on `ChunkRecord` and includes:
+- `chunk_id`, `source_id`, `source_type`
+- `title`, `url`
+- `text`
+- `embedding`
+- `domain`, `entity_tags`, `section`, `order`
+- `metadata`, `version`
+
+Upsert behavior:
+- `MongoRepo.upsert_chunks()` uses `ReplaceOne({"chunk_id": rec.chunk_id}, ..., upsert=True)`
+- Re-running ingestion updates existing chunk records instead of duplicating by `chunk_id`.
+
+## Troubleshooting
+
+### `MONGODB_URI is not set`
+
+Fix:
+- add `MONGODB_URI=...` to `.env`
+- or export it in your shell before running commands
+
+### `ModuleNotFoundError` for dependencies
+
+Fix:
+```bash
+pip install -r requirements.txt
+pip install pymongo python-dotenv
+```
+
+### Mongo DNS / timeout / connection errors
+
+Likely causes:
+- no internet access
+- blocked DNS/network policy
+- invalid Atlas/network allowlist settings
+
+### Record count mismatch
+
+If `local records built` and Mongo count differ:
+- rerun command and check for write errors
+- verify `source_id` filter is correct
+- check collection name is exactly `kb_chuncks`
+
+## Quick command reference
+
+```bash
+# Local ingestion test (all JSON files)
+python test_ingestion_service.py
+
+# Local ingestion test (single file)
+python test_ingestion_service.py --file accommodation_halls.json
+
+# Local ingestion + preview files
+python test_ingestion_service.py --write-previews
+
+# Mongo upload integration test (recommended first pass)
+python test_ingestion_service.py --test-mongo-upload --embedder fake
+
+# Mongo upload with OpenAI embeddings
+python test_ingestion_service.py --test-mongo-upload --embedder openai
+```
