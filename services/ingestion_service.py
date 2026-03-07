@@ -1,11 +1,16 @@
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 import hashlib
-import json
 import os
-from pathlib import Path
 
-from langchain_openai import OpenAI
-from ..schemas.models import Document, Chunk, ChunkTags, ChunkRecord
+try:
+    from openai import OpenAI
+except ImportError:  # pragma: no cover
+    OpenAI = None
+
+try:
+    from schemas.models import Document, Chunk, ChunkTags, ChunkRecord
+except ImportError:  # pragma: no cover
+    from ..schemas.models import Document, Chunk, ChunkTags, ChunkRecord
 
 class IngestionService:
     """
@@ -35,11 +40,11 @@ class IngestionService:
         doc = self._normalize_json(data=data, source_id=source_id, title=title)
         return self._ingest_document(doc)
 
-    def ingest_text(self, text: str, source_id: str, title: Optional[str] = None) -> int:
+    def ingest_text(self, text: str, source_id: str, title: Optional[str] = None) -> tuple[int, List[ChunkRecord]]:
         doc = Document(source_id=source_id, source_type="txt", title=title, text=text, raw={})
         return self._ingest_document(doc)
 
-    def ingest_web_qna(self, qna_list: List[Dict[str, str]], source_id: str, url: Optional[str] = None) -> int:
+    def ingest_web_qna(self, qna_list: List[Dict[str, str]], source_id: str, url: Optional[str] = None) -> tuple[int, List[ChunkRecord]]:
         doc = self._normalize_qna(qna_list=qna_list, source_id=source_id, url=url)
         return self._ingest_document(doc)
 
@@ -70,7 +75,7 @@ class IngestionService:
             records.append(record)
 
         # 5) upsert
-        # self.repo.upsert_chunks(records)
+        self.repo.upsert_chunks(records)
         return len(records), records
     
     # ---------------------------
