@@ -65,6 +65,12 @@ class MongoRepo:
         self.collection.create_index("chunk_id", unique=True, name="chunk_id_unique")
         self.collection.create_index("source_id", name="source_id_idx")
         self.collection.create_index("version", name="version_idx")
+        # Supports lexical fallback path in RetrieverService when Atlas Search is unavailable.
+        self.collection.create_index(
+            [("text", "text"), ("title", "text"), ("entity_tags", "text")],
+            name="chunk_text_search_idx",
+            default_language="english",
+        )
         self.manifest_collection.create_index("source_id", unique=True, name="manifest_source_unique")
 
     def get_existing_chunk_ids(self, chunk_ids: Iterable[str]) -> Set[str]:
