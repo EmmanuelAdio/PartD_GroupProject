@@ -1,11 +1,13 @@
 # PartD Group Project
 
-This repository currently focuses on a working ingestion pipeline for RAG data:
+This repository currently includes working ingestion and retrieval services for RAG:
 1. Read JSON source files from `data/`
 2. Normalize + chunk into retrieval-friendly text blocks
 3. Add domain/entity tags (heuristic or LLM-assisted)
 4. Generate embeddings (deterministic local or OpenAI)
 5. Upsert chunk records into MongoDB (`open_day_knowledge.kb_chuncks`)
+6. Run hybrid retrieval (vector + lexical + metadata filters)
+7. Merge/rerank evidence and return answerer-ready items
 
 ## Current status
 
@@ -16,12 +18,15 @@ Implemented:
 - `services/embedding_service.py`
 - `services/llm_services.py`
 - `services/mongo_repo.py`
+- `services/index_manager.py`
+- `services/retriever_service.py`
 - `schemas/models.py`
 - `test_ingestion_service.py`
+- `test_retrieval_service.py`
+- `test_index_manager.py`
 
 Still stubs/empty:
 - `agents/processor_agent.py`
-- `services/retriever_service.py`
 
 ## Setup
 
@@ -42,6 +47,25 @@ OPENAI_API_KEY="your_openai_api_key"
 Notes:
 - `MONGODB_URI` is required for Mongo upload tests.
 - `OPENAI_API_KEY` is required for `--embedder openai` and `--tagger llm`.
+
+## Retrieval service overview
+
+`RetrieverService` supports hybrid retrieval over MongoDB chunk records:
+- Vector retrieval using Atlas Vector Search (`$vectorSearch`) when index is ready.
+- Lexical retrieval using Atlas Search (`$search`) when text index is ready.
+- Metadata filters on `domain`, `entity_tags`, `section`, optional `source_id`, `version`.
+- Merge + rerank with overlap boost for chunks returned by both channels.
+- Deduplication by `chunk_id`.
+
+Fallback behavior (for resilience):
+- If vector index is not ready/unavailable: falls back to Python cosine scan over filtered docs.
+- If Atlas Search index is not ready/unavailable: falls back to Mongo `$text`.
+- If `$text` is unavailable: falls back to regex/token scan.
+
+Index management:
+- `AtlasIndexManager` checks, creates, and reconciles Atlas vector/text search indexes.
+- `MongoRepo.ensure_indexes()` also creates a native Mongo text index:
+  `chunk_text_search_idx` on `text`, `title`, `entity_tags` for lexical fallback.
 
 ## Main application ingestion (app.main)
 
@@ -254,6 +278,89 @@ Command:
 python test_ingestion_service.py --test-mongo-upload --mongo-db open_day_knowledge --mongo-collection kb_chuncks
 ```
 
+## Retrieval and index test commands
+
+### 9) Check Atlas index health only
+
+Command:
+```bash
+python test_index_manager.py --embedder fake --mongo-db open_day_knowledge --mongo-collection kb_chuncks
+```
+
+### 10) Create/reconcile Atlas indexes (fake embeddings)
+
+Command:
+```bash
+python test_index_manager.py --embedder fake --mongo-db open_day_knowledge --mongo-collection kb_chuncks --ensure-indexes
+```
+
+### 11) Create/reconcile Atlas indexes (OpenAI embeddings)
+
+Command:
+```bash
+python test_index_manager.py --embedder openai --embedding-model text-embedding-3-small --mongo-db open_day_knowledge --mongo-collection kb_chuncks --ensure-indexes
+```
+
+### 12) Run retrieval test suite (default sample queries)
+
+Command:
+```bash
+python test_retrieval_service.py --embedder fake --mongo-db open_day_knowledge --mongo-collection kb_chuncks
+```
+
+Expected output includes:
+- index health summary
+- query-level fallback diagnostics
+- ranked evidence snippets
+
+Example diagnostic line:
+```text
+fallback_used: YES (vector_mode=fallback_cosine, text_mode=mongo_text)
+```
+
+### 13) Run retrieval test for a single query
+
+Command:
+```bash
+python test_retrieval_service.py --embedder fake --query "Butler Court" --top-k 5
+```
+
+### 14) Run retrieval test with structured filters
+
+Command:
+```bash
+python test_retrieval_service.py --embedder fake --query "UCAS entry requirements" --domain courses --domain admissions --entity-tag UCAS --top-k 6
+```
+
+### 15) Auto-create/reconcile indexes from retrieval test script
+
+Command:
+```bash
+python test_retrieval_service.py --embedder fake --auto-create-indexes
+```
+
+### 16) Index check only via retrieval script
+
+Command:
+```bash
+python test_retrieval_service.py --embedder fake --check-indexes-only
+```
+
+### 17) Full real-embedding path (recommended production-like flow)
+
+1. Re-ingest all data with OpenAI embeddings:
+```bash
+python test_ingestion_service.py --test-mongo-upload --embedder openai --tagger heuristic --clear-source-before-upload --mongo-db open_day_knowledge --mongo-collection kb_chuncks
+```
+2. Ensure Atlas indexes with OpenAI dimensions:
+```bash
+python test_index_manager.py --embedder openai --embedding-model text-embedding-3-small --mongo-db open_day_knowledge --mongo-collection kb_chuncks --ensure-indexes
+```
+3. Run retrieval tests with OpenAI embedder:
+```bash
+python test_retrieval_service.py --embedder openai --embedding-model text-embedding-3-small --mongo-db open_day_knowledge --mongo-collection kb_chuncks --auto-create-indexes
+```
+
 ## Version numbers in ingestion records
 
 Where version comes from:
@@ -275,8 +382,9 @@ Recommended versioning rule (next step):
 1. Strong idempotency key strategy across model changes
 Currently `chunk_id` is content-derived; changing chunk format can create new ids unexpectedly. A stable source+path strategy would help.
 
-2. Vector index bootstrap for MongoDB Atlas
-Regular Mongo indexes are created automatically, but Atlas vector index setup is still manual.
+2. Atlas index operations are environment-dependent
+Atlas Search/Vector index APIs vary by cluster tier/permissions/driver support.
+`AtlasIndexManager` now handles helper + command fallbacks, but Atlas permissions are still required.
 
 3. Retry/backoff around external API calls
 OpenAI embedding/tagging calls should have retry policy and better error telemetry.
@@ -310,3 +418,16 @@ No explicit rollback/rebuild command per source and version beyond manual delete
 - Re-run with `--clear-source-before-upload`.
 - Ensure `--mongo-collection kb_chuncks`.
 - Check if previous versions/data exist in same source_id.
+
+### Atlas index errors / not READY
+- Run:
+  `python test_index_manager.py --embedder fake --ensure-indexes`
+- If using OpenAI embeddings, ensure index dims match:
+  `python test_index_manager.py --embedder openai --embedding-model text-embedding-3-small --ensure-indexes`
+- If status is `PENDING`, wait a few minutes and check again.
+
+### Retrieval always using fallbacks
+- Check diagnostics in retrieval output (`vector_mode`, `text_mode`, `fallback_used`).
+- Run index health check:
+  `python test_retrieval_service.py --check-indexes-only`
+- Confirm embedding dimensions match stored data and query embedder.
