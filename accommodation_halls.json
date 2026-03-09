@@ -1,0 +1,2210 @@
+[
+  {
+    "name": "Butler Court",
+    "type": "hall",
+    "address": "Butler Court Loughborough University LE11 3TS",
+    "short_description": "Located in East Park, near the School of Design and Creative Arts and our rugby pitches. Butler Court is a very tight knit community where morale is high and there is a great social life. The hall is named after Sir Clifford Butler, Vice-Chancellor of the University from 1975-1985.",
+    "catering_type": "self_catered",
+    "days_catered": null,
+    "meals_per_week": null,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly cleaning of kitchens and communal areas",
+      "Communal bathrooms and toilet facilities will be cleaned a minimum of three times a week"
+    ],
+    "facilities": [
+      "Deluxe flats have sofa and TV in the kitchen",
+      "Electric hobs in the kitchen",
+      "Large games/common room including TV, table tennis and table football",
+      "Unlimited wired and wireless internet access",
+      "Card/mobile app operated launderette",
+      "Bike shed"
+    ],
+    "room_types": [
+      {
+        "name": "Standard",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 4,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 126.68,
+            "total_contract_gbp": 5302.27
+          }
+        ],
+        "available_to": [
+          "undergraduate",
+          "international"
+        ]
+      },
+      {
+        "name": "Shared Twin with En-Suite",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "double",
+        "tenancy_weeks": 41,
+        "number_of_beds": 204,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 128.16,
+            "total_contract_gbp": 5364.41
+          }
+        ],
+        "available_to": [
+          "undergraduate",
+          "international"
+        ]
+      },
+      {
+        "name": "Large En-Suite, 4ft bed",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 103,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 203.98,
+            "total_contract_gbp": 8538.11
+          }
+        ],
+        "available_to": [
+          "undergraduate",
+          "international"
+        ]
+      }
+    ],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "International ON CAMPUS Students",
+        "audience": "international",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-22",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "eastparkreception@lboro.ac.uk",
+      "general_enquiries_phone": "+44 (0)1509 223819",
+      "hall_manager": {
+        "name": "Sarah Hooley",
+        "phone": "+44 (0)1509 223819"
+      },
+      "warden": {
+        "name": "Email:",
+        "email": "butlercourt.warden@lboro.ac.uk",
+        "phone": null
+      },
+      "subwardens": [
+        {
+          "name": "Harry Macnamara"
+        },
+        {
+          "name": "Nana Yaa Nsiah-Appiah"
+        },
+        {
+          "name": "Chukwudi Ogunna"
+        }
+      ],
+      "duty_mobile": "07731 990251"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/butler-court/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:19.437643Z"
+    }
+  },
+  {
+    "name": "Cayley",
+    "type": "hall",
+    "address": "Cayley Hall Loughborough University LE11 3TX",
+    "short_description": "Located in the village, Cayley is at the heart of campus and close to lecture theatres, sporting facilities, the University Library and the Students' Union. It is named after Sir George Cayley, a Yorkshire baronet, who laid down the foundations of modern science aerodynamics. Cayley has a range of bedroom options available and offers catered meals Monday to Friday (15 meals per week).",
+    "catering_type": "catered",
+    "days_catered": "Monday–Friday",
+    "meals_per_week": 15,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly cleaning of kitchens and communal areas",
+      "Communal bathrooms and toilet facilities will be cleaned a minimum of three times a week"
+    ],
+    "facilities": [
+      "Common room - Freeview TV, table football, darts and more (subject to change)",
+      "Kitchenette: Supplied with kettle, toaster, combi microwave, fridge-freezer, induction hob",
+      "Unlimited wired and wireless internet access",
+      "Card/mobile app operated launderette",
+      "Bike shed"
+    ],
+    "room_types": [
+      {
+        "name": "Standard",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 86,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 183.4,
+            "total_contract_gbp": 7676.6
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "Standard, 4ft bed",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 132,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 220.43,
+            "total_contract_gbp": 9226.57
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "Shared en-suite",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 24,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 228.84,
+            "total_contract_gbp": 9578.59
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "En-suite",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 87,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 236.67,
+            "total_contract_gbp": 9906.33
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      }
+    ],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-22",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "northvillagehub@lboro.ac.uk",
+      "general_enquiries_phone": null,
+      "hall_manager": null,
+      "warden": {
+        "name": "Mrs Elaine Beaken",
+        "email": "cayley.warden@lboro.ac.uk",
+        "phone": "+44 (0)1509 222268"
+      },
+      "subwardens": [
+        {
+          "name": "Rebecca Chiu"
+        },
+        {
+          "name": "Raj Shekhar Srivastava"
+        },
+        {
+          "name": "Maz Fazliu"
+        }
+      ],
+      "duty_mobile": "07849226365"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/cayley/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:19.629113Z"
+    }
+  },
+  {
+    "name": "Claudia Parsons",
+    "type": "hall",
+    "address": "Claudia Parsons Hall Loughborough University LE11 3TU",
+    "short_description": "Claudia Parsons is a new Hall of Residence opened in 2019 - this hall is named after an English engineer, traveller and Alumna of Loughborough University. She is known for being the first woman to circumnavigate the world by car. Located in the village, Claudia Parsons is at the heart of campus and close to lecture theatres, sporting facilities and the Students' Union.",
+    "catering_type": "self_catered",
+    "days_catered": null,
+    "meals_per_week": null,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly cleaning of kitchens and communal areas"
+    ],
+    "facilities": [
+      "Unlimited wired and wireless internet access",
+      "Electric hobs in the kitchen",
+      "Card/mobile app operated launderette",
+      "Student social hub - large common room and study space",
+      "Active Campus – facilities providing outstanding recreation and fitness opportunities, an environment where students can study and relax in spaces specifically designed to support learning, health and wellbeing",
+      "Bike Storage"
+    ],
+    "room_types": [
+      {
+        "name": "En-suite, 4ft bed",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 409,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 217.38,
+            "total_contract_gbp": 9067.92
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      }
+    ],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-23",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "International ON CAMPUS Students",
+        "audience": "international",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-23",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "northvillagehub@lboro.ac.uk",
+      "general_enquiries_phone": null,
+      "hall_manager": null,
+      "warden": {
+        "name": ": Karl Brennan",
+        "email": null,
+        "phone": null
+      },
+      "subwardens": [
+        {
+          "name": "William Norriss"
+        },
+        {
+          "name": "Marzii Ramezani-Lashkariani"
+        },
+        {
+          "name": "Dimitris Tseno"
+        },
+        {
+          "name": "Heather Lee"
+        }
+      ],
+      "duty_mobile": null
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/claudia-parsons/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:19.764008Z"
+    }
+  },
+  {
+    "name": "David Collett",
+    "type": "hall",
+    "address": "David Collett Hall Loughborough University LE11 3UE",
+    "short_description": "David Collett is located in the west park on campus and is close to the Engineering departments and University Library. The hall offers spacious rooms located in six different blocks and is named after the Chairman of the University Council from 1966 to 1982.",
+    "catering_type": "catered",
+    "days_catered": "Monday–Friday",
+    "meals_per_week": 10,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly cleaning of kitchens and communal areas",
+      "Communal bathrooms and toilet facilities will be cleaned a minimum of three times a week"
+    ],
+    "facilities": [
+      "Four common/games rooms with pool and tennis tables, Freeview and 40\" HD TV (subject to change)",
+      "Unlimited wired and wireless internet access",
+      "Card/mobile app operated launderette",
+      "Bike shed",
+      "Induction hobs in the kitchen"
+    ],
+    "room_types": [
+      {
+        "name": "Standard",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 211,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 162.95,
+            "total_contract_gbp": 6820.62
+          }
+        ],
+        "available_to": [
+          "undergraduate",
+          "international"
+        ]
+      },
+      {
+        "name": "Standard, 4ft bed",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 95,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 172.41,
+            "total_contract_gbp": 7216.59
+          }
+        ],
+        "available_to": [
+          "undergraduate",
+          "international"
+        ]
+      },
+      {
+        "name": "En-suite, 4ft bed",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 56,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 219.09,
+            "total_contract_gbp": 9170.48
+          }
+        ],
+        "available_to": [
+          "undergraduate",
+          "international"
+        ]
+      }
+    ],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "International ON CAMPUS Students",
+        "audience": "international",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-22",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "davidcollettreception@lboro.ac.uk",
+      "general_enquiries_phone": "+44 (",
+      "hall_manager": {
+        "name": "Martin MacDougall",
+        "phone": "+44 ("
+      },
+      "warden": {
+        "name": "Ms Tina Leeland",
+        "email": "T.Leeland@lboro.ac.uk",
+        "phone": "+44 (0)1509 222269"
+      },
+      "subwardens": [
+        {
+          "name": "Huyen Le"
+        },
+        {
+          "name": "Ana Jurado-Strada"
+        },
+        {
+          "name": "Venuka Kuruwita-Arachchige-Don"
+        },
+        {
+          "name": "Frozan Dizaye"
+        }
+      ],
+      "duty_mobile": "07526256981"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/david-collett/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:19.892042Z"
+    }
+  },
+  {
+    "name": "Elvyn Richards",
+    "type": "hall",
+    "address": "Elvyn Richards Hall Loughborough University LE11 3UQ",
+    "short_description": "Elvyn Richards is located in the popular student village. This hall takes its name from Professor Elvyn Richards, the University's second Vice-Chancellor from 1967 to 1975.",
+    "catering_type": "catered",
+    "days_catered": "Monday–Friday",
+    "meals_per_week": 10,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly cleaning of kitchens and communal areas"
+    ],
+    "facilities": [
+      "Games/common room (facilities subject to change)",
+      "Unlimited wired and wireless internet access",
+      "Card/mobile app operated launderette (The Hub)",
+      "Bike store"
+    ],
+    "room_types": [],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "International ON CAMPUS Students",
+        "audience": "international",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-22",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "Villagepark@lboro.ac.uk",
+      "general_enquiries_phone": "+44 (0)1509 222254",
+      "hall_manager": {
+        "name": "Carl Cooke",
+        "phone": "+44 (0)1509 222254"
+      },
+      "warden": {
+        "name": "Email:",
+        "email": "elvyn.warden@lboro.ac.uk",
+        "phone": "+44 (0)1509 222270"
+      },
+      "subwardens": [
+        {
+          "name": "Steffi Shaji"
+        },
+        {
+          "name": "George Lagios"
+        },
+        {
+          "name": "Claire Richards"
+        }
+      ],
+      "duty_mobile": "07591479007"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/elvyn-richards/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:20.072905Z"
+    }
+  },
+  {
+    "name": "Falkner Eggington",
+    "type": "hall",
+    "address": "Falkner Eggington Hall Loughborough University LE11 3UG",
+    "short_description": "Named after Harold Everett Falkner, founder and former head of Aeronautical Engineering. Also Alfred Thomas Eggington, awarded the Military Cross in 1916, former headmaster of Loughborough College. Falkner Eggington is our largest self-catered hall on campus. With a unique mix of ages and cultures the hall is known for its community spirit and lively atmosphere.",
+    "catering_type": "catered",
+    "days_catered": null,
+    "meals_per_week": null,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly cleaning of kitchens and communal areas",
+      "Communal bathrooms and toilet facilities will be cleaned a minimum of three times a week"
+    ],
+    "facilities": [
+      "2 x Common/Games rooms",
+      "Unlimited wired and wireless internet access",
+      "Card/mobile app operated launderette",
+      "Bike sheds"
+    ],
+    "room_types": [],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-24",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 50,
+        "label": "postgraduates",
+        "audience": "postgraduates",
+        "start_date": "2025-09-24",
+        "end_date": "2026-09-12"
+      },
+      {
+        "weeks": 41,
+        "label": "International ON CAMPUS Students",
+        "audience": "international",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning Students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-24",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "falkeggreception@lboro.ac.uk",
+      "general_enquiries_phone": "+44 (0)1509 223839",
+      "hall_manager": {
+        "name": "Sarah Hooley",
+        "phone": "+44 (0)1509 223839"
+      },
+      "warden": {
+        "name": "Email:",
+        "email": "falkeggwarden@mailbox.lboro.ac.uk",
+        "phone": "+44 (0)1509 222335"
+      },
+      "subwardens": [
+        {
+          "name": "Mafalda Ferreira Da Cunha"
+        },
+        {
+          "name": "Deepanshi Birthal"
+        },
+        {
+          "name": "Natalia Galan-Lopez"
+        },
+        {
+          "name": "Michael Shaw"
+        }
+      ],
+      "duty_mobile": "07757251452"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/falkner-eggington/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:20.263947Z"
+    }
+  },
+  {
+    "name": "Faraday",
+    "type": "hall",
+    "address": "Faraday Hall Loughborough University LE11 3TY",
+    "short_description": "Faraday is in the student village at the heart of our campus, consisting of 27 accommodation blocks of two and three storeys. This hall is named after the renowned scientist and former Director of the Royal Institution, Michael Faraday. Faraday has a range of bedroom options available and offers catered meals Monday to Friday (15 meals per week).",
+    "catering_type": "catered",
+    "days_catered": "Monday–Friday",
+    "meals_per_week": 15,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly cleaning of kitchens and communal areas",
+      "Communal bathrooms and toilet facilities will be cleaned a minimum of three times a week"
+    ],
+    "facilities": [
+      "Large common/games room - Freeview TV, table football, pool table, darts and more (subject to change)",
+      "Unlimited wired and wireless internet access",
+      "Card/mobile app operated launderette",
+      "Bike sheds"
+    ],
+    "room_types": [
+      {
+        "name": "Standard",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 152,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 183.4,
+            "total_contract_gbp": 7624.2
+          }
+        ],
+        "available_to": [
+          "undergraduate",
+          "international"
+        ]
+      },
+      {
+        "name": "Shared en-suite",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 30,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 228.84,
+            "total_contract_gbp": 9513.21
+          }
+        ],
+        "available_to": [
+          "undergraduate",
+          "international"
+        ]
+      },
+      {
+        "name": "Shared en-suite, 4ft bed",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 20,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 231.7,
+            "total_contract_gbp": 9632.1
+          }
+        ],
+        "available_to": [
+          "undergraduate",
+          "international"
+        ]
+      },
+      {
+        "name": "En-suite",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 114,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 236.67,
+            "total_contract_gbp": 9838.71
+          }
+        ],
+        "available_to": [
+          "undergraduate",
+          "international"
+        ]
+      },
+      {
+        "name": "En-suite, 4ft bed",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 51,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 239.53,
+            "total_contract_gbp": 9957.6
+          }
+        ],
+        "available_to": [
+          "undergraduate",
+          "international"
+        ]
+      }
+    ],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-24",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "International ON CAMPUS Students",
+        "audience": "international",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning Students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-24",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "villagecentral@mailbox.lboro.ac.uk",
+      "general_enquiries_phone": "+44 (0)1509 223914",
+      "hall_manager": {
+        "name": "Linda Moulton",
+        "phone": "+44 (0)1509 223914"
+      },
+      "warden": {
+        "name": "Email:",
+        "email": "faradaywarden@lboro.ac.uk",
+        "phone": "+44 (0)1509 222271"
+      },
+      "subwardens": [
+        {
+          "name": "Muhammad Umer Jadoon"
+        },
+        {
+          "name": "Mengying Niu"
+        },
+        {
+          "name": "Naami Sharma"
+        },
+        {
+          "name": "Jordan McConnell"
+        }
+      ],
+      "duty_mobile": "07583803715"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/faraday/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:20.393747Z"
+    }
+  },
+  {
+    "name": "Harry French",
+    "type": "hall",
+    "address": "Harry French (Court) Ashby Rd Loughborough LE11 3UN",
+    "short_description": "Situated on a split site, on either side of Ashby Road, just 200 metres from campus. Harry French is a relaxed and friendly close-knit community, set in gardens and ideally situated for students who want to be near both town and campus. This hall is owned and managed by our partners, Unite Students. It is named after Dr Harry French, an engineer/physicist, Senior Pro-Chancellor and Chairman of Council 1981-1986. Harry French has a range of bedroom options available.",
+    "catering_type": "self_catered",
+    "days_catered": null,
+    "meals_per_week": null,
+    "services": [
+      "No bedroom cleaning",
+      "Kitchens and communal areas cleaned weekly in standard flats",
+      "Communal bathrooms and toilet facilities cleaned weekly"
+    ],
+    "facilities": [
+      "Large common/games room - Freeview, TV, table tennis/football and more (facilities subject to change)",
+      "The University network and internet access are available by both wired and wireless networks",
+      "Mobile app operated launderette",
+      "Bike sheds (bicycles stored at this hall are covered under the Unite block insurance policy)",
+      "Limited parking available through Unite Students",
+      "Situated close to the University on Ashby Road"
+    ],
+    "room_types": [],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-22",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "sac@mailbox.lboro.ac.uk",
+      "general_enquiries_phone": "07968 552809",
+      "hall_manager": {
+        "name": null,
+        "phone": "07968 552809"
+      },
+      "warden": {
+        "name": "Email:",
+        "email": "H.French@lboro.ac.uk",
+        "phone": null
+      },
+      "subwardens": [
+        {
+          "name": "Hung-Ju Chiu"
+        },
+        {
+          "name": "James Turner"
+        },
+        {
+          "name": "Niloo Todeh-Kharman"
+        },
+        {
+          "name": "Farwa Bukhari"
+        }
+      ],
+      "duty_mobile": "07521 871818"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/harry-french/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:20.525960Z"
+    }
+  },
+  {
+    "name": "Hazlerigg-Rutland",
+    "type": "hall",
+    "address": "Hazlerigg Rutland Hall Loughborough University LE11 3TZ",
+    "short_description": "The original Rutland Hall was built in 1932 and the original Hazlerigg Hall was built in 1937 surrounding the Fountain Lawn next to the present Loughborough Students' Union Building. In 2008 Hazlerigg-Rutland moved into a brand-new home in the student village. This hall offers great facilities, a brilliant social environment, and an ideal location.",
+    "catering_type": "self_catered",
+    "days_catered": null,
+    "meals_per_week": null,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly cleaning of kitchens and communal areas"
+    ],
+    "facilities": [
+      "6 or 8 students share large kitchen",
+      "Iron provided",
+      "The University network and internet access are available by both wired and wireless networks",
+      "Central card operated launderette (The Hub)",
+      "Shared common room - The Granby (facilities subject to change)",
+      "Bike Shed"
+    ],
+    "room_types": [
+      {
+        "name": "En-suite, 4ft bed",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 196,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 204.73,
+            "total_contract_gbp": 8511.11
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      }
+    ],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-24",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning Students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-24",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "Villagepark@lboro.ac.uk",
+      "general_enquiries_phone": "+44 (0)1509 222254",
+      "hall_manager": {
+        "name": "Carl Cooke",
+        "phone": "+44 (0)1509 222254"
+      },
+      "warden": {
+        "name": "Email:",
+        "email": "Rigg-rut_jp_warden@lboro.ac.uk",
+        "phone": "+44 (0)7521 613810"
+      },
+      "subwardens": [
+        {
+          "name": "Maryam Salehi"
+        },
+        {
+          "name": "Brian Wong"
+        },
+        {
+          "name": "Muhammad (Zee) Asad"
+        },
+        {
+          "name": "Joshua Thomas"
+        }
+      ],
+      "duty_mobile": "07810 595528"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/hazlerigg-rutland/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:20.649207Z"
+    }
+  },
+  {
+    "name": "John Phillips",
+    "type": "hall",
+    "address": "John Phillips Hall Loughborough University LE11 3US",
+    "short_description": "Professor John Guest Phillips came to Loughborough University as its fourth Vice-Chancellor in January 1986, following a most distinguished career as a zoologist. John Phillips is a great place to live and study. The Warden for John Phillips is also the Warden of Hazlerigg-Rutland, therefore you will be affiliated to Hazelrigg-Rutland Hall.",
+    "catering_type": "self_catered",
+    "days_catered": null,
+    "meals_per_week": null,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly kitchen and communal area cleaning"
+    ],
+    "facilities": [
+      "The University network and internet access are available by both wired and wireless networks",
+      "Central card operated launderette (The Hub)",
+      "Shared common room - The Granby (facilities subject to change)",
+      "Bike shed",
+      "Rice cookers provided in kitchens"
+    ],
+    "room_types": [
+      {
+        "name": "En-suite, 4ft bed",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 105,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 204.73,
+            "total_contract_gbp": 8511.11
+          }
+        ],
+        "available_to": [
+          "undergraduate",
+          "postgraduate"
+        ]
+      }
+    ],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-24",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning Students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-24",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "Villagepark@lboro.ac.uk",
+      "general_enquiries_phone": "+44 (0)1509 222254",
+      "hall_manager": {
+        "name": "Carl Cooke",
+        "phone": "+44 (0)1509 222254"
+      },
+      "warden": {
+        "name": "Email:",
+        "email": "Rigg-rut_jp_warden@lboro.ac.uk",
+        "phone": "+44 (0)7521 613810"
+      },
+      "subwardens": [
+        {
+          "name": "Kevin Tan"
+        },
+        {
+          "name": "Brian Wong"
+        },
+        {
+          "name": "Muhammad (Zee) Asad"
+        },
+        {
+          "name": "Johnny Cartucho"
+        }
+      ],
+      "duty_mobile": "07810 595528"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/john-phillips/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:20.835650Z"
+    }
+  },
+  {
+    "name": "Robert Bakewell",
+    "type": "hall",
+    "address": "Robert Bakewell Hall Loughborough University LE11 3UR",
+    "short_description": "Located in the student village, Robert Bakewell hall is only a 5-minute walk from the library, a 5-minute walk from the EHB bar and a 10-minute walk to the Students' Union. The hall is named after Robert Bakewell who was an eighteenth-century agriculturalist from nearby Dishley Grange.",
+    "catering_type": "self_catered",
+    "days_catered": null,
+    "meals_per_week": null,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly cleaning of kitchens and communal areas"
+    ],
+    "facilities": [
+      "Central card operated launderette (the Hub)",
+      "Games/common room (facilities subject to change)",
+      "Iron provided",
+      "The University network and internet access are available by both wired and wireless networks",
+      "Bike shed"
+    ],
+    "room_types": [
+      {
+        "name": "En-suite, 4ft bed",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 400,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 204.73,
+            "total_contract_gbp": 8540.36
+          }
+        ],
+        "available_to": [
+          "undergraduate",
+          "international"
+        ]
+      }
+    ],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-23",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "International ON CAMPUS Students",
+        "audience": "international",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-23",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "Villagepark@lboro.ac.uk",
+      "general_enquiries_phone": "+44 (0)1509 222254",
+      "hall_manager": {
+        "name": "Carl Cooke",
+        "phone": "+44 (0)1509 222254"
+      },
+      "warden": {
+        "name": "Email:",
+        "email": "bakewell.warden@lboro.ac.uk",
+        "phone": "+44 (0)1509 226557"
+      },
+      "subwardens": [
+        {
+          "name": "Greeshma Girdhar"
+        },
+        {
+          "name": "Tunmike Olowe"
+        },
+        {
+          "name": "Mohammad Abdullah"
+        }
+      ],
+      "duty_mobile": "07518420547"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/robert-bakewell/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:20.970926Z"
+    }
+  },
+  {
+    "name": "Royce",
+    "type": "hall",
+    "address": "Royce Hall Loughborough University LE11 3TJ",
+    "short_description": "Located in the popular student village, Royce consists of 19 accommodation blocks of two and three storeys. It is close to lecture halls, sports facilities, the library and is only a 20-minute walk from town. The hall is named after Sir Henry Royce, founder member of Rolls-Royce Ltd, a pioneer of aeronautical engineering in education.",
+    "catering_type": "catered",
+    "days_catered": "Monday–Friday",
+    "meals_per_week": 15,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly cleaning of kitchens and communal areas",
+      "Communal bathrooms and toilet facilities will be cleaned a minimum of three times a week"
+    ],
+    "facilities": [
+      "2 - 8 students share a kitchenette (number sharing facilities is higher in some larger blocks)",
+      "Large common/games room - Freeview TV, table football, darts and more (facilities subject to change)",
+      "The University network and internet access are available by both wired and wireless networks",
+      "Card/mobile app operated launderette",
+      "Bike shed"
+    ],
+    "room_types": [
+      {
+        "name": "Standard",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 195,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 183.4,
+            "total_contract_gbp": 7676.6
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "Shared en-suite",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 2,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 228.84,
+            "total_contract_gbp": 9578.59
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "En-suite",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 80,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 236.67,
+            "total_contract_gbp": 9906.33
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "En-suite, 4ft bed",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 96,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 239.53,
+            "total_contract_gbp": 10026.04
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      }
+    ],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "International ON CAMPUS Students",
+        "audience": "international",
+        "start_date": "2025-09-22",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-22",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "villagecentral@mailbox.lboro.ac.uk",
+      "general_enquiries_phone": "+44 (0)1509 223914",
+      "hall_manager": {
+        "name": "Linda Moulton",
+        "phone": "+44 (0)1509 223914"
+      },
+      "warden": {
+        "name": "Email:",
+        "email": "m.a.king@lboro.ac.uk",
+        "phone": "+44 (0)1509 222273"
+      },
+      "subwardens": [
+        {
+          "name": "Hermione Spencer"
+        },
+        {
+          "name": "Yi Zhong"
+        },
+        {
+          "name": "Sam Inchley"
+        }
+      ],
+      "duty_mobile": "07514622346"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/royce/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:21.095715Z"
+    }
+  },
+  {
+    "name": "Rutherford",
+    "type": "hall",
+    "address": "Rutherford Hall Loughborough University LE11 3TH",
+    "short_description": "Located in the heart of the Student Village, this hall contains 17 blocks differing in size, rooms are mainly arranged around a central corridor. The hall is named after the eminent physicist Ernest Rutherford. Rutherford has a range of bedroom options available and offers catered meals Monday to Friday (15 meals per week).",
+    "catering_type": "catered",
+    "days_catered": "Monday–Friday",
+    "meals_per_week": 15,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly cleaning of kitchens and communal areas",
+      "Communal bathrooms and toilet facilities will be cleaned a minimum of three times a week"
+    ],
+    "facilities": [
+      "2-8 students share kitchenette facilities (number sharing facilities is higher in the larger blocks)",
+      "Block 5: 13 - 14 students share small kitchenette",
+      "Large common/games room - Freeview TV, table football, darts and more (facilities subject to change)",
+      "The University network and internet access are available by both wired and wireless networks",
+      "Card/mobile app operated launderette",
+      "Bike shed"
+    ],
+    "room_types": [],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-23",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-23",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "villagecentral@mailbox.lboro.ac.uk",
+      "general_enquiries_phone": "+44 (0)1509 223914",
+      "hall_manager": {
+        "name": "Linda Moulton",
+        "phone": "+44 (0)1509 223914"
+      },
+      "warden": {
+        "name": "Email:",
+        "email": "rutherford.warden@lboro.ac.uk",
+        "phone": "+44 (0)1509 222274"
+      },
+      "subwardens": [
+        {
+          "name": "Mathew Davies"
+        },
+        {
+          "name": "Jacob Vizor"
+        },
+        {
+          "name": "Neda Abbasimaleki"
+        }
+      ],
+      "duty_mobile": "07513019630"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/rutherford/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:21.267003Z"
+    }
+  },
+  {
+    "name": "Telford",
+    "type": "hall",
+    "address": "Telford Hall Loughborough University LE11 3UA",
+    "short_description": "Centrally positioned in the Student Village and laid out in five courts, Telford is just a two-minute walk from the University Library. It is a friendly and welcoming hall with a sporting legacy. It is named after Thomas Telford, Scottish Civil Engineer, noted for building roads, canals and bridges. Telford offers a standard bedroom option.",
+    "catering_type": "self_catered",
+    "days_catered": null,
+    "meals_per_week": null,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly cleaning of kitchens and communal areas",
+      "Communal bathrooms and toilet facilities will be cleaned a minimum of three times a week"
+    ],
+    "facilities": [
+      "The University network and internet access are available by both wired and wireless networks",
+      "Card/mobile app operated launderette",
+      "2 x games/common rooms (facilities subject to change)",
+      "Bike sheds"
+    ],
+    "room_types": [],
+    "let_lengths": [
+      {
+        "weeks": 39,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-24",
+        "end_date": "2026-06-28"
+      },
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-24",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning Students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-24",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2024-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "telfordreception@lboro.ac.uk",
+      "general_enquiries_phone": "+44 (0)1509 223827",
+      "hall_manager": {
+        "name": "Martin MacDougall",
+        "phone": "+44 (0)1509 223827"
+      },
+      "warden": {
+        "name": "Mark Dabney",
+        "email": "telford.warden@lboro.ac.uk",
+        "phone": "+44 (0)1509 222275"
+      },
+      "subwardens": [
+        {
+          "name": "Katrina Cranfield"
+        },
+        {
+          "name": "Boney Mahesh"
+        },
+        {
+          "name": "Kuldeep Singh Sodha"
+        },
+        {
+          "name": "Rachel Raymond"
+        }
+      ],
+      "duty_mobile": "07812012252"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/telford/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:21.459445Z"
+    }
+  },
+  {
+    "name": "The Holt",
+    "type": "hall",
+    "address": "The Holt Holt Drive LE11 3JB",
+    "short_description": "Situated approximately a 10-minute walk from the centre of campus and a 15-minute walk from the town centre, The Holt is off Forest Road on the East side of campus. The Holt is redeveloped accommodation, owned and managed by our partners, Unite Students. The Old Holt is a listed Victorian mansion around which the development was constructed.",
+    "catering_type": "self_catered",
+    "days_catered": null,
+    "meals_per_week": null,
+    "services": [
+      "No bedroom cleaning",
+      "Kitchens and communal areas cleaned weekly in standard flats and en-ensuite flats",
+      "Communal bathrooms and toilet facilities cleaned weekly"
+    ],
+    "facilities": [
+      "3-6 students share large dining kitchens",
+      "Large common/games rooms - Freeview TV area, pool and football table (facilities subject to change)",
+      "The University network and internet access are available by both wired and wireless network",
+      "Bike sheds (bicycles stored at this hall are covered under the University or Unite block insurance policy)",
+      "Limited parking available through Unite Students",
+      "Mobile app operated launderette"
+    ],
+    "room_types": [
+      {
+        "name": "One bedroom, 4ft bed, in 2 bedroom bungalow",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 6,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 165.41,
+            "total_contract_gbp": 6900.14
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "En-suite",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 1,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 166.95,
+            "total_contract_gbp": 6964.08
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "En-suite, 4ft bed",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 237,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 181.35,
+            "total_contract_gbp": 7565.04
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "Large en-suite, 4ft bed",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 16,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 198.62,
+            "total_contract_gbp": 8285.33
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "Studio flat, 4ft bed",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 1,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 202.25,
+            "total_contract_gbp": 8436.61
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      }
+    ],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-23",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-23",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "TheHolt@team.unitestudents.com",
+      "general_enquiries_phone": "+44 (0)1509 268342",
+      "hall_manager": {
+        "name": null,
+        "phone": "+44 (0)1509 268342"
+      },
+      "warden": {
+        "name": "Dr Val Dennehy",
+        "email": "holtwarden@lboro.ac.uk",
+        "phone": "+44 (0)1509 222282"
+      },
+      "subwardens": [
+        {
+          "name": "Alex Castelar-Cerna"
+        },
+        {
+          "name": "Dhvani Barot"
+        },
+        {
+          "name": "Yaw Yeboah"
+        }
+      ],
+      "duty_mobile": "07402079663"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/the-holt/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:21.634790Z"
+    }
+  },
+  {
+    "name": "Towers",
+    "type": "hall",
+    "address": "Towers Hall Loughborough University LE11 3TG",
+    "short_description": "Located in East Park, Towers is close to lecture theatres, the Students’ Union and Powerbase gym. The bedrooms in Towers were refurbished in 2010 and home to a newly constructed dining room and common room in 2016, Towers offers great facilities and a room with a view.",
+    "catering_type": "catered",
+    "days_catered": "Monday–Friday",
+    "meals_per_week": 19,
+    "services": [
+      "Fortnightly bedroom cleaning",
+      "Weekly cleaning of kitchens and communal areas"
+    ],
+    "facilities": [
+      "Four lifts - both towers are connected per floor",
+      "Students may request a lower floor if required",
+      "Common/games room with tennis tables, Freeview and 40\" HD TV (facilities subject to change)",
+      "The University network and internet access are available by both wired and wireless networks.",
+      "Card/mobile app operated launderette",
+      "Bike shed"
+    ],
+    "room_types": [],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-23",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-23",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "eastparkreception@lboro.ac.uk",
+      "general_enquiries_phone": "+44 (0)1509 223819",
+      "hall_manager": {
+        "name": "Sarah Hooley",
+        "phone": "+44 (0)1509 223819"
+      },
+      "warden": {
+        "name": "Email:",
+        "email": "Towers.Warden@lboro.ac.uk",
+        "phone": null
+      },
+      "subwardens": [
+        {
+          "name": "Redwan Atwiri"
+        },
+        {
+          "name": "Saim Rehan"
+        },
+        {
+          "name": "Congcong Qi"
+        }
+      ],
+      "duty_mobile": "07497806571"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/towers/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:21.760502Z"
+    }
+  },
+  {
+    "name": "William Morris",
+    "type": "hall",
+    "address": "William Morris Hall Ashby Road Loughborough University LE11 3TQ",
+    "short_description": "William Morris, otherwise known as 'Bill Mo', is situated across the road to the Students' Union only 200 metres from campus and is named after a 19th Century artist, designer, writer and socialist. \nWilliam Morris has a large range of bedroom options available. This property is owned and managed by our partners, Unite Students.",
+    "catering_type": "self_catered",
+    "days_catered": null,
+    "meals_per_week": null,
+    "services": [
+      "No bedroom cleaning",
+      "Kitchens and communal areas cleaned weekly in standard flats and en-suite flats",
+      "Communal bathrooms and toilet facilities cleaned weekly"
+    ],
+    "facilities": [
+      "Two common rooms - Freeview TV area, pool table, table tennis etc. (facilities subject to change)",
+      "The University network and internet access are available by both wired and wireless networks",
+      "Mobile app operated launderette",
+      "Bike sheds (bicycles stored at this hall are covered under the Unite block insurance policy)",
+      "Situated close to the Students' Union on Ashby Road",
+      "Limited parking available through Unite Students"
+    ],
+    "room_types": [
+      {
+        "name": "Standard, 4ft bed in 6-7 bed flat",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 179,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 148.15,
+            "total_contract_gbp": 6158.97
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "Standard, 4ft bed in 3-5 bed flat",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 113,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 156.58,
+            "total_contract_gbp": 6509.27
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "En-suite, 4ft bed",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 162,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 190.7,
+            "total_contract_gbp": 7927.64
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "Studio Flat, double bed",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "double",
+        "tenancy_weeks": 41,
+        "number_of_beds": 12,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 213.5,
+            "total_contract_gbp": 8875.57
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "One bedroom self-contained flat",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 1,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 227.06,
+            "total_contract_gbp": 9439.22
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "Standard, 4ft bed in Villa",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "single",
+        "tenancy_weeks": 41,
+        "number_of_beds": 7,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 153.4,
+            "total_contract_gbp": 6376.87
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "Standard (double bed) in Villa",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "double",
+        "tenancy_weeks": 41,
+        "number_of_beds": 12,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 159.15,
+            "total_contract_gbp": 6615.98
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "Large standard (double bed) in Villa",
+        "ensuite": false,
+        "bathroom_type": "shared",
+        "occupancy": "double",
+        "tenancy_weeks": 41,
+        "number_of_beds": 17,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 167.65,
+            "total_contract_gbp": 6969.27
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "En-suite (double bed) in Villa",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "double",
+        "tenancy_weeks": 41,
+        "number_of_beds": 1,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 172.73,
+            "total_contract_gbp": 7180.64
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      },
+      {
+        "name": "Large en-suite (double bed) in Villa",
+        "ensuite": true,
+        "bathroom_type": "en-suite",
+        "occupancy": "double",
+        "tenancy_weeks": 41,
+        "number_of_beds": 1,
+        "prices": [
+          {
+            "year": "2025/26",
+            "per_week_gbp": 182.35,
+            "total_contract_gbp": 7580.56
+          }
+        ],
+        "available_to": [
+          "undergraduate"
+        ]
+      }
+    ],
+    "let_lengths": [
+      {
+        "weeks": 41,
+        "label": "New Undergraduates",
+        "audience": "new_undergraduates",
+        "start_date": "2025-09-24",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 41,
+        "label": "Returning Students",
+        "audience": "returning_students",
+        "start_date": "2025-09-26",
+        "end_date": "2026-07-11"
+      },
+      {
+        "weeks": 18,
+        "label": "Semester 1",
+        "audience": "semester_1",
+        "start_date": "2025-09-24",
+        "end_date": "2026-01-30"
+      },
+      {
+        "weeks": 23,
+        "label": "Semester 2",
+        "audience": "semester_2",
+        "start_date": "2026-02-01",
+        "end_date": "2026-07-11"
+      }
+    ],
+    "contacts": {
+      "general_enquiries_email": "WilliamMorrisHalls@team.unitestudents.com",
+      "general_enquiries_phone": "+44 (0)1509 236809",
+      "hall_manager": {
+        "name": null,
+        "phone": "+44 (0)1509 236809"
+      },
+      "warden": {
+        "name": "Mr Julian MacKenzie",
+        "email": "J.Mackenzie@lboro.ac.uk",
+        "phone": "+44 (0)1509 222433"
+      },
+      "subwardens": [
+        {
+          "name": "Owen Bell"
+        },
+        {
+          "name": "Alpha Koroma"
+        },
+        {
+          "name": "Syafiq Mohamad Saiful"
+        },
+        {
+          "name": "Mahla Tayefi-Nasrabadi"
+        }
+      ],
+      "duty_mobile": "07855453051"
+    },
+    "official_url": "https://www.lboro.ac.uk/services/accommodation/our-halls/william-morris/",
+    "contact_email": "sac@mailbox.lboro.ac.uk",
+    "contact_phone": "+44 01509 274488",
+    "last_updated": {
+      "$date": "2025-12-10T18:34:21.944694Z"
+    }
+  }
+]
