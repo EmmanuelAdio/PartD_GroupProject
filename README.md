@@ -47,6 +47,8 @@ OPENAI_API_KEY="your_openai_api_key"
 Notes:
 - `MONGODB_URI` is required for Mongo upload tests.
 - `OPENAI_API_KEY` is required for `--embedder openai` and `--tagger llm`.
+- `OPEN_API_KEY` is also accepted as an alias for OpenAI key lookup.
+- `app/main.py` now loads `.env` from project root explicitly, with a built-in fallback parser when `python-dotenv` is not installed.
 
 ## Processor agent overview
 
@@ -86,11 +88,18 @@ Index management:
 - `MongoRepo.ensure_indexes()` also creates a native Mongo text index:
   `chunk_text_search_idx` on `text`, `title`, `entity_tags` for lexical fallback.
 
-## Main application ingestion (app.main)
+## FastAPI integration (app.main)
 
-`app.main` now supports both:
+`app.main` supports both:
 - CLI-based ingestion runs
-- FastAPI endpoints (`/ingest/*`) when launched by uvicorn
+- FastAPI endpoints for ingestion and querying when launched by uvicorn
+
+Runtime behavior in FastAPI mode:
+- Startup creates both `IngestionOrchestrator` and `QueryOrchestrator`.
+- Embedder backend is selected automatically:
+  - `openai` when `OPENAI_API_KEY` or `OPEN_API_KEY` exists
+  - `fake` otherwise
+- This keeps startup resilient if OpenAI credentials are missing.
 
 ### 1) Initial ingestion from CLI (all data files)
 
@@ -151,9 +160,76 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 
 Available endpoints:
 - `GET /health`
+- `GET /status`
 - `POST /ingest/all`
 - `POST /ingest/file`
 - `POST /ingest/payload`
+- `POST /query`
+
+## FastAPI endpoint usage
+
+Base URL:
+`http://127.0.0.1:8000`
+
+### Health + status endpoints
+
+1. Health check:
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+2. Retrieval/index status:
+```bash
+curl http://127.0.0.1:8000/status
+```
+
+`/status` includes:
+- Mongo collection doc count
+- Index health (`vector_index_found`, `text_index_found`, statuses)
+- Any health errors (including dimension mismatch warnings)
+
+### Data endpoints (ingestion)
+
+1. Ingest all files from `data/`:
+```bash
+curl -X POST "http://127.0.0.1:8000/ingest/all?incremental=true"
+```
+
+2. Ingest a single file:
+```bash
+curl -X POST "http://127.0.0.1:8000/ingest/file" \
+  -H "Content-Type: application/json" \
+  -d "{\"file_path\":\"accommodation_halls.json\",\"incremental\":true}"
+```
+
+3. Ingest JSON payload directly:
+```bash
+curl -X POST "http://127.0.0.1:8000/ingest/payload" \
+  -H "Content-Type: application/json" \
+  -d "{\"source_id\":\"manual_payload\",\"title\":\"Manual Payload\",\"incremental\":false,\"data\":{\"items\":[{\"text\":\"Example\"}]}}"
+```
+
+### Query endpoint
+
+1. Query with default planner `top_k`:
+```bash
+curl -X POST "http://127.0.0.1:8000/query" \
+  -H "Content-Type: application/json" \
+  -d "{\"query\":\"How much is Butler Court accommodation?\"}"
+```
+
+2. Query with explicit `top_k` override:
+```bash
+curl -X POST "http://127.0.0.1:8000/query" \
+  -H "Content-Type: application/json" \
+  -d "{\"query\":\"UCAS requirements for Computer Science\",\"top_k\":10}"
+```
+
+Response includes:
+- `processor_plan`
+- `retrieval_run.attempts_log`
+- `retrieval_run.evidence`
+- `retrieval_run.diagnostics`
 
 ## Ingestion test commands
 
@@ -482,9 +558,32 @@ No explicit rollback/rebuild command per source and version beyond manual delete
 ### `MONGODB_URI is not set`
 - Add it to `.env` or shell environment.
 
-### `OPENAI_API_KEY is not set`
-- Required for `--embedder openai` and `--tagger llm`.
-- Also required for `test_processor_agent.py` because `ProcessorAgent` uses LLM planning.
+### `OPENAI_API_KEY is not set` / `OPEN_API_KEY is not set`
+- Required for OpenAI embeddings and LLM calls.
+- FastAPI startup will now fall back to `fake` embedder and non-LLM planning when key is missing.
+- If you expect OpenAI mode, verify with:
+  - `GET /status`
+  - or inspect runtime env before server start.
+
+### `python-dotenv` not installed
+- `.env` still loads in FastAPI mode because `app/main.py` includes a fallback parser.
+- For CLI tools or notebooks, install for consistency:
+  `pip install python-dotenv`
+
+### Atlas dimension mismatch
+Error example:
+`Embedder produces 64-dim vectors but Atlas index expects 1536-dim`
+
+Cause:
+- Query-time embedder and stored/indexed embeddings were built with different backends.
+
+Fix:
+1. Ensure OpenAI key is loaded (`OPENAI_API_KEY`/`OPEN_API_KEY`).
+2. Re-ingest with OpenAI embeddings:
+   `python test_ingestion_service.py --test-mongo-upload --embedder openai --tagger heuristic --clear-source-before-upload`
+3. Recreate/reconcile indexes with OpenAI dims:
+   `python test_index_manager.py --embedder openai --embedding-model text-embedding-3-small --ensure-indexes`
+4. Restart FastAPI and re-check `/status`.
 
 ### Mongo DNS/timeout errors
 - Check internet access.
@@ -508,3 +607,14 @@ No explicit rollback/rebuild command per source and version beyond manual delete
 - Run index health check:
   `python test_retrieval_service.py --check-indexes-only`
 - Confirm embedding dimensions match stored data and query embedder.
+
+### FastAPI `500` errors from endpoints
+Use this quick triage:
+1. `GET /health` to confirm server is running.
+2. `GET /status` to inspect Mongo/index readiness and dimension errors.
+3. Check server logs for stack trace.
+4. Verify `.env` keys and restart uvicorn after any env change.
+
+### Credential leakage handling
+- If an OpenAI key was ever committed, logged, or pasted in traces, rotate/revoke it immediately.
+- Generate a new key and update `.env`.

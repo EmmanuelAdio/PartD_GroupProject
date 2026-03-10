@@ -4,11 +4,19 @@ import hashlib
 import os
 from typing import List, Sequence
 
+
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover
+    load_dotenv = None
+
 try:
     from openai import OpenAI
 except ImportError:  # pragma: no cover
     OpenAI = None
 
+if load_dotenv is not None:
+    load_dotenv()
 
 class EmbeddingService:
     """Thin wrapper around the OpenAI embeddings API.
@@ -27,10 +35,10 @@ class EmbeddingService:
                 "The 'openai' package is not installed. Install it with: pip install openai"
             )
 
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_API_KEY")
         if not self.api_key:
             raise ValueError(
-                "OPENAI_API_KEY is not set. Add it to your environment before using EmbeddingService."
+                "OPENAI_API_KEY (or OPEN_API_KEY) is not set. Add it to your environment before using EmbeddingService."
             )
 
         self.client = OpenAI(api_key=self.api_key)

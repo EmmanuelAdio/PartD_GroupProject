@@ -70,7 +70,9 @@ class ProcessorAgent:
             default_top_k: Default retrieval size for planned queries.
             max_entity_tags: Max number of entity tags retained post-parse.
         """
-        self.llm = llm_service or LLMService(model=llm_model)
+        self.llm = llm_service
+        if self.llm is None and self._has_openai_api_key():
+            self.llm = LLMService(model=llm_model)
         self.default_top_k = int(default_top_k)
         self.max_entity_tags = int(max_entity_tags)
 
@@ -84,6 +86,9 @@ class ProcessorAgent:
         normalized_query = self._normalize_query(user_query)
         if not normalized_query:
             raise ValueError("user_query must not be empty.")
+
+        if self.llm is None:
+            return RetrievalQuery(query_text=normalized_query, top_k=self.default_top_k)
 
         schema_context = self.get_schema_context()
         system_prompt = self._build_system_prompt(schema_context)
@@ -228,6 +233,10 @@ class ProcessorAgent:
         raw = os.getenv(name, "")
         values = [part.strip() for part in raw.split(",")]
         return [v for v in values if v]
+
+    @staticmethod
+    def _has_openai_api_key() -> bool:
+        return bool(os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_API_KEY"))
 
     @staticmethod
     def _dedupe(values: List[Any], *, lowercase: bool) -> List[str]:

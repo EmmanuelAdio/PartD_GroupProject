@@ -2,8 +2,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover
+    load_dotenv = None
 
 try:
     from fastapi import FastAPI, HTTPException
@@ -13,8 +20,35 @@ except ImportError:  # pragma: no cover
     HTTPException = Exception  # type: ignore[assignment]
     BaseModel = object  # type: ignore[assignment]
 
-from app.orchestrator import IngestionOrchestrator
+from app.orchestrator import IngestionOrchestrator, QueryOrchestrator
 
+def _load_project_env() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    env_path = project_root / ".env"
+    if not env_path.exists():
+        return
+
+    if load_dotenv is not None:
+        load_dotenv(dotenv_path=env_path)
+        return
+
+    # Fallback parser when python-dotenv is not installed.
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        os.environ.setdefault(key, value)
+
+
+_load_project_env()
+
+def _default_query_embedder_backend() -> str:
+    return "openai" if (os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_API_KEY")) else "fake"
 
 def handle_ingestion_api(payload: Dict[str, Any]) -> Dict[str, Any]:
     """API-style ingestion handler you can call from routes or other services."""
@@ -36,13 +70,20 @@ def handle_ingestion_api(payload: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
-orchestrator: Optional[IngestionOrchestrator] = None
+ingestion_orchestrator: Optional[IngestionOrchestrator] = None
+query_orchestrator: Optional[QueryOrchestrator] = None
 
 if FastAPI is not None:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
-        global orchestrator
-        orchestrator = IngestionOrchestrator()
+        global ingestion_orchestrator, query_orchestrator
+        default_embedder_backend = _default_query_embedder_backend()
+        ingestion_orchestrator = IngestionOrchestrator(
+            embedder_backend=default_embedder_backend,
+        )
+        query_orchestrator = QueryOrchestrator(
+            embedder_backend=default_embedder_backend,
+        )
         yield
 
     app = FastAPI(
@@ -61,6 +102,10 @@ if FastAPI is not None:
         title: Optional[str] = None
         incremental: bool = False
 
+    class QueryRequest(BaseModel):
+        query: str
+        top_k: Optional[int] = None
+
     @app.get("/health")
     def health():
         return {"status": "ok"}
@@ -68,9 +113,9 @@ if FastAPI is not None:
     @app.post("/ingest/file")
     def ingest_file(req: IngestFileRequest):
         try:
-            if orchestrator is None:
+            if ingestion_orchestrator is None:
                 raise RuntimeError("Orchestrator is not ready.")
-            return orchestrator.ingest_file(
+            return ingestion_orchestrator.ingest_file(
                 file_path=req.file_path,
                 incremental=req.incremental,
                 clear_source_before_reingest=True,
@@ -83,9 +128,9 @@ if FastAPI is not None:
     @app.post("/ingest/all")
     def ingest_all(incremental: bool = True):
         try:
-            if orchestrator is None:
+            if ingestion_orchestrator is None:
                 raise RuntimeError("Orchestrator is not ready.")
-            return orchestrator.ingest_all_data_files(
+            return ingestion_orchestrator.ingest_all_data_files(
                 incremental=incremental,
                 clear_source_before_reingest=True,
             )
@@ -95,15 +140,36 @@ if FastAPI is not None:
     @app.post("/ingest/payload")
     def ingest_payload(req: IngestPayloadRequest):
         try:
-            if orchestrator is None:
+            if ingestion_orchestrator is None:
                 raise RuntimeError("Orchestrator is not ready.")
-            return orchestrator.ingest_json_payload(
+            return ingestion_orchestrator.ingest_json_payload(
                 data=req.data,
                 source_id=req.source_id,
                 title=req.title,
                 incremental=req.incremental,
                 clear_source_before_reingest=True,
             )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/query")
+    def run_query(req: QueryRequest):
+        try:
+            if query_orchestrator is None:
+                raise RuntimeError("QueryOrchestrator is not ready.")
+            return query_orchestrator.run(
+                user_query=req.query,
+                top_k_override=req.top_k,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/status")
+    def get_status():
+        try:
+            if query_orchestrator is None:
+                raise RuntimeError("QueryOrchestrator is not ready.")
+            return query_orchestrator.get_status()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 else:
