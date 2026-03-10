@@ -383,22 +383,22 @@ class IngestionService:
         return hashlib.sha1(s.encode("utf-8")).hexdigest()
 
 
-class OpenAIEmbedder:
-    """Temporary embedder for local ingestion testing.
+# class OpenAIEmbedder:
+#     """Temporary embedder for local ingestion testing.
 
-    Uses OpenAI embeddings API and requires OPENAI_API_KEY.
-    """
+#     Uses OpenAI embeddings API and requires OPENAI_API_KEY.
+#     """
 
-    def __init__(self, model: str = "text-embedding-3-small") -> None:
-        if OpenAI is None:
-            raise ImportError(
-                "The 'openai' package is not installed. Install it with: pip install openai"
-            )
-        self.model = model
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+#     def __init__(self, model: str = "text-embedding-3-small") -> None:
+#         if OpenAI is None:
+#             raise ImportError(
+#                 "The 'openai' package is not installed. Install it with: pip install openai"
+#             )
+#         self.model = model
+#         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-    def embed_many(self, texts: List[str]) -> List[List[float]]:
-        if not texts:
-            return []
-        response = self.client.embeddings.create(model=self.model, input=texts)
-        return [item.embedding for item in response.data]
+#     def embed_many(self, texts: List[str]) -> List[List[float]]:
+#         if not texts:
+#             return []
+#         response = self.client.embeddings.create(model=self.model, input=texts)
+#         return [item.embedding for item in response.data]

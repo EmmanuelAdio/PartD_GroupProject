@@ -6,8 +6,9 @@ This repository currently includes working ingestion and retrieval services for 
 3. Add domain/entity tags (heuristic or LLM-assisted)
 4. Generate embeddings (deterministic local or OpenAI)
 5. Upsert chunk records into MongoDB (`open_day_knowledge.kb_chuncks`)
-6. Run hybrid retrieval (vector + lexical + metadata filters)
-7. Merge/rerank evidence and return answerer-ready items
+6. Plan retrieval queries with an LLM-first Processor Agent
+7. Run hybrid retrieval (vector + lexical + metadata filters)
+8. Merge/rerank evidence and return answerer-ready items
 
 ## Current status
 
@@ -20,13 +21,12 @@ Implemented:
 - `services/mongo_repo.py`
 - `services/index_manager.py`
 - `services/retriever_service.py`
+- `agents/processor_agent.py`
 - `schemas/models.py`
 - `test_ingestion_service.py`
 - `test_retrieval_service.py`
 - `test_index_manager.py`
-
-Still stubs/empty:
-- `agents/processor_agent.py`
+- `test_processor_agent.py`
 
 ## Setup
 
@@ -48,12 +48,31 @@ Notes:
 - `MONGODB_URI` is required for Mongo upload tests.
 - `OPENAI_API_KEY` is required for `--embedder openai` and `--tagger llm`.
 
+## Processor agent overview
+
+`ProcessorAgent` (`agents/processor_agent.py`) is implemented as an LLM-first query planner.
+
+It:
+- normalizes the raw user query
+- builds a schema-aware prompt for retrieval planning
+- calls `LLMService` for JSON output
+- parses output into `RetrievalQuery`
+- applies small post-processing for retrieval safety/consistency
+
+It does not:
+- query MongoDB
+- retrieve documents
+- generate final answers
+- run embeddings
+- ingest documents
+
 ## Retrieval service overview
 
 `RetrieverService` supports hybrid retrieval over MongoDB chunk records:
 - Vector retrieval using Atlas Vector Search (`$vectorSearch`) when index is ready.
 - Lexical retrieval using Atlas Search (`$search`) when text index is ready.
-- Metadata filters on `domain`, `entity_tags`, `section`, optional `source_id`, `version`.
+- Hard metadata filters on `domain`, optional `source_id`, `version`.
+- Soft rerank boosts on `section` and `entity_tags` (instead of hard pre-filtering).
 - Merge + rerank with overlap boost for chunks returned by both channels.
 - Deduplication by `chunk_id`.
 
@@ -361,6 +380,63 @@ python test_index_manager.py --embedder openai --embedding-model text-embedding-
 python test_retrieval_service.py --embedder openai --embedding-model text-embedding-3-small --mongo-db open_day_knowledge --mongo-collection kb_chuncks --auto-create-indexes
 ```
 
+## Processor + retrieval integration test commands
+
+### 18) Processor plans query, then retrieval runs on that plan
+
+Command:
+```bash
+python test_processor_agent.py --query "How much is Butler Court accommodation?"
+```
+
+What it does:
+- Generates a `RetrievalQuery` plan via `ProcessorAgent`.
+- Prints the plan JSON.
+- Runs `RetrieverService` with that exact plan.
+- Prints diagnostics and ranked evidence.
+
+### 19) Same flow with fake embedder (no embedding API calls)
+
+Command:
+```bash
+python test_processor_agent.py --query "How much is Butler Court accommodation?" --embedder fake --mongo-db open_day_knowledge --mongo-collection kb_chuncks
+```
+
+### 20) Override planned top-k for retrieval experiments
+
+Command:
+```bash
+python test_processor_agent.py --query "UCAS entry requirements for Computer Science" --top-k-override 10
+```
+
+### 21) Write processor+retrieval report JSON
+
+Command:
+```bash
+python test_processor_agent.py --query "How much is Butler Court accommodation?" --write-report reports/processor_butler_test.json
+```
+
+### 22) Use OpenAI embedder at retrieval time (production-like query embedding path)
+
+Command:
+```bash
+python test_processor_agent.py --query "How much is Butler Court accommodation?" --embedder openai --embedding-model text-embedding-3-small
+```
+
+### 23) Auto-create/reconcile indexes from processor test script
+
+Command:
+```bash
+python test_processor_agent.py --query "How much is Butler Court accommodation?" --auto-create-indexes
+```
+
+### 24) See all processor test CLI options
+
+Command:
+```bash
+python test_processor_agent.py --help
+```
+
 ## Version numbers in ingestion records
 
 Where version comes from:
@@ -408,6 +484,7 @@ No explicit rollback/rebuild command per source and version beyond manual delete
 
 ### `OPENAI_API_KEY is not set`
 - Required for `--embedder openai` and `--tagger llm`.
+- Also required for `test_processor_agent.py` because `ProcessorAgent` uses LLM planning.
 
 ### Mongo DNS/timeout errors
 - Check internet access.

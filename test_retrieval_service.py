@@ -17,6 +17,103 @@ from services.mongo_repo import MongoRepo
 from services.retriever_service import RetrieverService
 
 
+class _DummyCollection:
+    """Minimal collection stub for unit tests that call private rerank logic only."""
+
+
+class _DummyEmbedder:
+    """Minimal embedder stub required by RetrieverService constructor."""
+
+    def embed_one(self, _: str) -> List[float]:
+        return [0.1, 0.2, 0.3]
+
+
+def _build_unit_test_retriever() -> RetrieverService:
+    """Build RetrieverService without index checks for isolated rerank tests."""
+    return RetrieverService(
+        embedder=_DummyEmbedder(),
+        collection=_DummyCollection(),
+        vector_weight=0.5,
+        text_weight=0.5,
+        overlap_boost=0.0,
+        check_indexes_on_init=False,
+    )
+
+
+def test_merge_and_rerank_section_boost_reranks_upward() -> None:
+    """A matching section should receive a positive soft boost in final score."""
+    retriever = _build_unit_test_retriever()
+
+    vector_hits = [
+        {
+            "chunk_id": "chunk_entry",
+            "source_id": "s1",
+            "text": "Entry requirements details",
+            "section": "entry_requirements",
+            "entity_tags": [],
+            "_score": 0.8,
+        }
+    ]
+    text_hits = [
+        {
+            "chunk_id": "chunk_overview",
+            "source_id": "s2",
+            "text": "Course overview details",
+            "section": "overview",
+            "entity_tags": [],
+            "_score": 0.8,
+        }
+    ]
+
+    merged = retriever._merge_and_rerank(
+        vector_hits=vector_hits,
+        text_hits=text_hits,
+        top_k=2,
+        boost_sections={"entry_requirements"},
+        boost_entity_tags=set(),
+    )
+
+    by_chunk = {item.chunk_id: item for item in merged}
+    assert by_chunk["chunk_entry"].score > by_chunk["chunk_overview"].score
+
+
+def test_merge_and_rerank_entity_tag_boost_reranks_upward() -> None:
+    """A matching entity tag should receive a positive soft boost in final score."""
+    retriever = _build_unit_test_retriever()
+
+    vector_hits = [
+        {
+            "chunk_id": "chunk_cs",
+            "source_id": "s1",
+            "text": "Computer Science information",
+            "section": "overview",
+            "entity_tags": ["Computer Science"],
+            "_score": 0.8,
+        }
+    ]
+    text_hits = [
+        {
+            "chunk_id": "chunk_generic",
+            "source_id": "s2",
+            "text": "Generic information",
+            "section": "overview",
+            "entity_tags": [],
+            "_score": 0.8,
+        }
+    ]
+
+    merged = retriever._merge_and_rerank(
+        vector_hits=vector_hits,
+        text_hits=text_hits,
+        top_k=2,
+        boost_sections=set(),
+        boost_entity_tags={"computer science"},
+    )
+
+    by_chunk = {item.chunk_id: item for item in merged}
+    assert by_chunk["chunk_cs"].score > by_chunk["chunk_generic"].score
+
+
 def read_env_value(key: str, env_path: Path) -> str | None:
     if not env_path.exists():
         return None

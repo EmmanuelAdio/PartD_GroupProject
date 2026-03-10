@@ -67,6 +67,8 @@ class RetrieverService:
         vector_weight: float = 0.55,
         text_weight: float = 0.45,
         overlap_boost: float = 0.2,
+        section_boost: float = 0.15,
+        entity_tag_boost: float = 0.10,
         fallback_scan_limit: int = 5000,
         check_indexes_on_init: bool = True,
         auto_create_indexes: bool = True,
@@ -100,6 +102,8 @@ class RetrieverService:
         self.vector_weight = vector_weight / total_weight
         self.text_weight = text_weight / total_weight
         self.overlap_boost = overlap_boost
+        self.section_boost = section_boost
+        self.entity_tag_boost = entity_tag_boost
         self.fallback_scan_limit = fallback_scan_limit
         self.last_query_diagnostics: Dict[str, Any] = {}
         self._index_health_report: Optional[IndexHealthReport] = None
@@ -143,6 +147,16 @@ class RetrieverService:
         self._reset_diagnostics(query_text=query_text, top_k=query_model.top_k)
 
         metadata_filter = self._build_metadata_filter(query_model)
+        boost_sections = {
+            v.lower()
+            for v in [query_model.section, *(query_model.sections or [])]
+            if v
+        }
+        boost_entity_tags = {
+            t.lower()
+            for t in (query_model.entity_tags or [])
+            if t
+        }
         top_k = query_model.top_k
         vector_k = query_model.vector_k or max(20, top_k * 4)
         text_k = query_model.text_k or max(20, top_k * 4)
@@ -151,10 +165,18 @@ class RetrieverService:
         vector_hits = self._vector_search(query_embedding, metadata_filter, vector_k)
         text_hits = self._text_search(query_text, metadata_filter, text_k)
 
-        merged = self._merge_and_rerank(vector_hits=vector_hits, text_hits=text_hits, top_k=top_k)
+        merged = self._merge_and_rerank(
+            vector_hits=vector_hits,
+            text_hits=text_hits,
+            top_k=top_k,
+            boost_sections=boost_sections,
+            boost_entity_tags=boost_entity_tags,
+        )
         self.last_query_diagnostics["vector_hits"] = len(vector_hits)
         self.last_query_diagnostics["text_hits"] = len(text_hits)
         self.last_query_diagnostics["final_hits"] = len(merged)
+        self.last_query_diagnostics["boost_sections"] = sorted(boost_sections)
+        self.last_query_diagnostics["boost_entity_tags"] = sorted(boost_entity_tags)
         return merged
 
     def _vector_search(
@@ -372,8 +394,12 @@ class RetrieverService:
         vector_hits: List[Dict[str, Any]],
         text_hits: List[Dict[str, Any]],
         top_k: int,
+        boost_sections: Set[str] | None = None,
+        boost_entity_tags: Set[str] | None = None,
     ) -> List[EvidenceItem]:
         """Merge channels, dedupe by chunk_id, and compute a simple weighted score."""
+        boost_sections = boost_sections or set()
+        boost_entity_tags = boost_entity_tags or set()
         candidates: Dict[str, _MergedCandidate] = {}
 
         for rank, hit in enumerate(vector_hits, start=1):
@@ -402,6 +428,14 @@ class RetrieverService:
             )
             overlap_component = self.overlap_boost if len(cand.channels) > 1 else 0.0
             final_score = vector_component + text_component + overlap_component
+            doc_section = str(cand.doc.get("section") or "").lower()
+            section_component = self.section_boost if doc_section and doc_section in boost_sections else 0.0
+
+            doc_tags = {str(t).lower() for t in cand.doc.get("entity_tags") or [] if t}
+            overlap_count = len(doc_tags & boost_entity_tags)
+            entity_component = min(self.entity_tag_boost * overlap_count, self.entity_tag_boost * 2)
+
+            final_score = final_score + section_component + entity_component
 
             merged.append(
                 self._to_evidence_item(
@@ -483,14 +517,6 @@ class RetrieverService:
         domains = self._unique_non_empty([query.domain, *query.domains], to_lower=True)
         if domains:
             filters["domain"] = domains[0] if len(domains) == 1 else {"$in": domains}
-
-        sections = self._unique_non_empty([query.section, *query.sections], to_lower=False)
-        if sections:
-            filters["section"] = sections[0] if len(sections) == 1 else {"$in": sections}
-
-        tags = self._unique_non_empty(query.entity_tags, to_lower=False)
-        if tags:
-            filters["entity_tags"] = {"$in": tags}
 
         source_ids = self._unique_non_empty(query.source_ids, to_lower=False)
         if source_ids:
@@ -733,6 +759,8 @@ class RetrieverService:
             "vector_hits": 0,
             "text_hits": 0,
             "final_hits": 0,
+            "boost_sections": [],
+            "boost_entity_tags": [],
             "index_health": {
                 "checked": r is not None,
                 "healthy": r.is_healthy if r is not None else None,
