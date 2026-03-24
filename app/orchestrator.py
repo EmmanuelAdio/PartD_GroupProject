@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from agents.answerer_agent import AnswererAgent
 from agents.processor_agent import ProcessorAgent
-from schemas.models import RetrievalQuery
+from schemas.models import EvidenceItem, RetrievalQuery
 from services.embedding_service import DeterministicEmbeddingService, EmbeddingService
 from services.ingestion_service import IngestionService
 from services.llm_services import LLMService
@@ -301,6 +301,16 @@ class QueryOrchestrator:
             results, diag = self._retrieve(bare)
             attempts_log.append({"attempt": 3, "description": "bare_query", "hits": len(results)})
 
+        retrieved_result_count = len(results)
+        results = self._prepare_answer_evidence(
+            user_query=user_query,
+            plan=plan,
+            evidence=results,
+        )
+        diag = dict(diag or {})
+        diag["answer_evidence_expanded"] = len(results) > retrieved_result_count
+        diag["answer_evidence_count"] = len(results)
+
         attempt_used = next((a["attempt"] for a in attempts_log if a["hits"] > 0), None)
         answer_result = self.answerer.answer(
             user_query=user_query,
@@ -318,6 +328,7 @@ class QueryOrchestrator:
                 "attempt_used": attempt_used,
                 "attempts_log": attempts_log,
                 "result_count": len(results),
+                "retrieved_result_count": retrieved_result_count,
                 "diagnostics": diag,
                 "evidence": [item.model_dump() for item in results],
             },
@@ -334,6 +345,82 @@ class QueryOrchestrator:
         results = self.retriever.retrieve(plan)
         diag = self.retriever.get_last_query_diagnostics()
         return results, diag
+
+    def _prepare_answer_evidence(
+        self,
+        *,
+        user_query: str,
+        plan: RetrievalQuery,
+        evidence: List[EvidenceItem],
+    ) -> List[EvidenceItem]:
+        if not self._should_expand_accommodation_price_evidence(user_query, plan):
+            return evidence
+
+        expanded_docs = self.repo.collection.find(
+            {
+                "source_id": "accommodation_halls",
+                "domain": "accommodation",
+            },
+            {
+                "_id": 0,
+                "chunk_id": 1,
+                "source_id": 1,
+                "source_type": 1,
+                "title": 1,
+                "url": 1,
+                "text": 1,
+                "domain": 1,
+                "entity_tags": 1,
+                "section": 1,
+                "order": 1,
+                "version": 1,
+                "metadata": 1,
+            },
+        ).sort("order", 1)
+
+        merged: List[EvidenceItem] = []
+        seen = set()
+
+        for item in evidence:
+            if item.chunk_id in seen:
+                continue
+            seen.add(item.chunk_id)
+            merged.append(item)
+
+        for doc in expanded_docs:
+            try:
+                item = EvidenceItem.model_validate(
+                    {
+                        **doc,
+                        "score": 0.0,
+                        "vector_score": None,
+                        "text_score": None,
+                        "retrieval_channels": [],
+                    }
+                )
+            except Exception:
+                continue
+            if item.chunk_id in seen:
+                continue
+            seen.add(item.chunk_id)
+            merged.append(item)
+
+        return merged
+
+    @staticmethod
+    def _should_expand_accommodation_price_evidence(user_query: str, plan: RetrievalQuery) -> bool:
+        query_lc = (user_query or "").lower()
+        plan_domains = {str(v).lower() for v in [plan.domain, *(plan.domains or [])] if v}
+        is_accommodation = "accommodation" in plan_domains or "accommodation" in query_lc or "hall" in query_lc
+        has_extreme = any(
+            token in query_lc
+            for token in ("cheapest", "lowest", "least expensive", "minimum", "most expensive", "highest", "maximum", "priciest")
+        )
+        has_price_signal = any(
+            token in query_lc
+            for token in ("price", "prices", "cost", "costs", "fee", "fees", "rent", "weekly", "per week")
+        )
+        return is_accommodation and has_extreme and has_price_signal
 
     def _get_mongo_status(self) -> Dict[str, Any]:
         doc_count = self.repo.collection.count_documents({})

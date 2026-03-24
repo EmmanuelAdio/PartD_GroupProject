@@ -59,6 +59,128 @@ def _sample_evidence() -> List[EvidenceItem]:
     ]
 
 
+def _sample_price_comparison_evidence() -> List[EvidenceItem]:
+    return [
+        EvidenceItem(
+            chunk_id="chunk-butler",
+            source_id="accommodation_halls",
+            source_type="json",
+            title="Accommodation Halls",
+            text=(
+                "[0].name: Butler Court\n"
+                "[0].room_types[0].name: Standard\n"
+                "[0].room_types[0].prices[0].year: 2025/26\n"
+                "[0].room_types[0].prices[0].per_week_gbp: 126.68\n"
+                "[0].room_types[0].prices[0].total_contract_gbp: 5302.27"
+            ),
+            domain="accommodation",
+            entity_tags=["Butler Court"],
+            section="json_fields",
+            order=0,
+            version="ingest-v2",
+            score=0.91,
+            retrieval_channels=["vector", "text"],
+            metadata={},
+        ),
+        EvidenceItem(
+            chunk_id="chunk-holt",
+            source_id="accommodation_halls",
+            source_type="json",
+            title="Accommodation Halls",
+            text=(
+                "[14].name: The Holt\n"
+                "[14].room_types[0].name: One bedroom, 4ft bed, in 2 bedroom bungalow\n"
+                "[14].room_types[0].prices[0].year: 2025/26\n"
+                "[14].room_types[0].prices[0].per_week_gbp: 165.41\n"
+                "[14].room_types[0].prices[0].total_contract_gbp: 6900.14"
+            ),
+            domain="accommodation",
+            entity_tags=["The Holt"],
+            section="json_fields",
+            order=1,
+            version="ingest-v2",
+            score=0.82,
+            retrieval_channels=["vector", "text"],
+            metadata={},
+        ),
+    ]
+
+
+def _sample_split_price_extreme_evidence() -> List[EvidenceItem]:
+    return [
+        EvidenceItem(
+            chunk_id="chunk-faraday-name",
+            source_id="accommodation_halls",
+            source_type="json",
+            title="Accommodation Halls",
+            text="[6].name: Faraday",
+            domain="accommodation",
+            entity_tags=["Faraday"],
+            section="json_fields",
+            order=0,
+            version="ingest-v2",
+            score=0.0,
+            retrieval_channels=[],
+            metadata={},
+        ),
+        EvidenceItem(
+            chunk_id="chunk-faraday-price",
+            source_id="accommodation_halls",
+            source_type="json",
+            title="Accommodation Halls",
+            text=(
+                "[6].room_types[4].name: En-suite, 4ft bed\n"
+                "[6].room_types[4].prices[0].year: 2025/26\n"
+                "[6].room_types[4].prices[0].per_week_gbp: 239.53\n"
+                "[6].room_types[4].prices[0].total_contract_gbp: 10000.00"
+            ),
+            domain="accommodation",
+            entity_tags=["En-suite, 4ft bed"],
+            section="json_fields",
+            order=1,
+            version="ingest-v2",
+            score=0.0,
+            retrieval_channels=[],
+            metadata={},
+        ),
+        EvidenceItem(
+            chunk_id="chunk-royce-name",
+            source_id="accommodation_halls",
+            source_type="json",
+            title="Accommodation Halls",
+            text="[11].name: Royce",
+            domain="accommodation",
+            entity_tags=["Royce"],
+            section="json_fields",
+            order=2,
+            version="ingest-v2",
+            score=0.0,
+            retrieval_channels=[],
+            metadata={},
+        ),
+        EvidenceItem(
+            chunk_id="chunk-royce-price",
+            source_id="accommodation_halls",
+            source_type="json",
+            title="Accommodation Halls",
+            text=(
+                "[11].room_types[3].name: En-suite, 4ft bed\n"
+                "[11].room_types[3].prices[0].year: 2025/26\n"
+                "[11].room_types[3].prices[0].per_week_gbp: 239.53\n"
+                "[11].room_types[3].prices[0].total_contract_gbp: 10000.00"
+            ),
+            domain="accommodation",
+            entity_tags=["En-suite, 4ft bed"],
+            section="json_fields",
+            order=3,
+            version="ingest-v2",
+            score=0.0,
+            retrieval_channels=[],
+            metadata={},
+        ),
+    ]
+
+
 def test_answerer_returns_no_evidence_response_when_empty() -> None:
     agent = AnswererAgent(llm_service=None)
 
@@ -164,3 +286,58 @@ def test_answerer_polishes_llm_price_formatting() -> None:
     assert "GBP 126.68 per week" in result.answer
     assert "GBP 5,302.27" in result.answer
     assert "total contract cost" in result.answer.lower()
+
+
+def test_answerer_fallback_handles_cheapest_price_questions() -> None:
+    agent = AnswererAgent(llm_service=None)
+
+    result = agent.answer(
+        user_query="Which on-campus accommodation has the lowest weekly price?",
+        evidence_items=_sample_price_comparison_evidence(),
+    )
+
+    assert result.fallback_used is True
+    assert result.grounded is True
+    assert "lowest weekly price" in result.answer.lower()
+    assert "Butler Court" in result.answer
+    assert "GBP 126.68" in result.answer
+    assert result.used_evidence_count == 1
+
+
+def test_answerer_uses_deterministic_extreme_price_logic_even_with_llm_available() -> None:
+    agent = AnswererAgent(
+        llm_service=_StubLLMService(
+            {
+                "answer": "The cheapest accommodation is The Holt at GBP 165.41 per week.",
+                "grounded": True,
+                "confidence": 1.0,
+                "citation_ids": [2],
+            }
+        )
+    )
+
+    result = agent.answer(
+        user_query="Which on-campus accommodation has the lowest weekly price?",
+        evidence_items=_sample_price_comparison_evidence(),
+    )
+
+    assert result.fallback_used is True
+    assert result.grounded is True
+    assert "Butler Court" in result.answer
+    assert "GBP 126.68" in result.answer
+
+
+def test_answerer_extreme_price_logic_recovers_names_across_split_chunks_and_handles_ties() -> None:
+    agent = AnswererAgent(llm_service=None)
+
+    result = agent.answer(
+        user_query="Which on-campus accommodation has the highest weekly price?",
+        evidence_items=_sample_split_price_extreme_evidence(),
+    )
+
+    assert result.fallback_used is True
+    assert result.grounded is True
+    assert "GBP 239.53" in result.answer
+    assert "Faraday" in result.answer
+    assert "Royce" in result.answer
+    assert result.used_evidence_count == 2

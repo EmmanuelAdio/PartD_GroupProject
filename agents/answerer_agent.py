@@ -76,6 +76,16 @@ class AnswererAgent:
                 fallback_used=self.llm is None,
             )
 
+        # For min/max accommodation price questions, deterministic comparison is
+        # more reliable than asking the LLM to reason over a partial set of prices.
+        if self._looks_like_price_extreme_query(normalized_query):
+            extreme_answer = self._build_price_extreme_answer(
+                user_query=normalized_query,
+                evidence=evidence,
+            )
+            if extreme_answer is not None:
+                return extreme_answer
+
         if self.llm is None:
             return self._fallback_answer(
                 user_query=normalized_query,
@@ -193,6 +203,10 @@ class AnswererAgent:
         evidence: Sequence[EvidenceItem],
     ) -> AnswerResult:
         """Deterministic fallback when no LLM is available."""
+        extreme_price_answer = self._build_price_extreme_answer(user_query=user_query, evidence=evidence)
+        if extreme_price_answer is not None:
+            return extreme_price_answer
+
         price_answer = self._build_price_answer(user_query=user_query, evidence=evidence)
         if price_answer is not None:
             return price_answer
@@ -287,9 +301,84 @@ class AnswererAgent:
             return True
         if self._looks_like_missing_evidence_answer(answer_lc):
             return True
+        if self._looks_like_price_extreme_query(user_query):
+            return True
         if self._looks_like_price_query(user_query) and "per week" in fallback_result.answer.lower():
             return True
         return False
+
+    def _build_price_extreme_answer(
+        self,
+        *,
+        user_query: str,
+        evidence: Sequence[EvidenceItem],
+    ) -> Optional[AnswerResult]:
+        direction = self._price_extreme_direction(user_query)
+        if direction is None or not self._looks_like_price_extreme_query(user_query):
+            return None
+
+        candidates = self._collect_price_candidates(evidence)
+        if not candidates:
+            return None
+
+        best_value = min(item["per_week"] for item in candidates) if direction == "min" else max(
+            item["per_week"] for item in candidates
+        )
+        best_matches = [
+            item
+            for item in candidates
+            if abs(item["per_week"] - best_value) < 1e-9
+        ]
+        best_matches = self._dedupe_price_candidates(best_matches)
+        best_matches.sort(
+            key=lambda item: (
+                str(item.get("hall_name") or ""),
+                str(item.get("room_name") or ""),
+            )
+        )
+
+        citations = self._build_citations([item["evidence_id"] for item in best_matches], evidence)
+        if not citations:
+            return None
+
+        comparator = "lowest" if direction == "min" else "highest"
+        money = self._format_money(str(best_value))
+        years = [str(item["year"]) for item in best_matches if item.get("year")]
+        unique_years = sorted({year for year in years if year})
+
+        if len(best_matches) == 1:
+            best = best_matches[0]
+            subject = best["hall_name"] or "The accommodation"
+            room_name = best["room_name"]
+            if room_name:
+                answer = (
+                    f"The {comparator} weekly price I found in the accommodation data is "
+                    f"{subject} ({room_name}) at {money} per week"
+                )
+            else:
+                answer = (
+                    f"The {comparator} weekly price I found in the accommodation data is "
+                    f"{subject} at {money} per week"
+                )
+        else:
+            labels = [self._format_price_candidate_label(item) for item in best_matches]
+            answer = (
+                f"The {comparator} weekly price I found in the accommodation data is "
+                f"{money} per week, shared by {self._join_with_and(labels)}"
+            )
+
+        if len(unique_years) == 1:
+            answer += f" for {unique_years[0]}"
+        answer += "."
+
+        return AnswerResult(
+            answer=self._polish_answer_text(answer),
+            grounded=True,
+            confidence=0.92,
+            citations=citations,
+            used_evidence_count=len(citations),
+            fallback_used=True,
+        )
 
     def _build_price_answer(
         self,
@@ -576,6 +665,164 @@ class AnswererAgent:
         )
 
     @staticmethod
+    def _looks_like_price_extreme_query(user_query: str) -> bool:
+        query_lc = (user_query or "").lower()
+        has_extreme = AnswererAgent._price_extreme_direction(user_query) is not None
+        has_price_signal = any(
+            token in query_lc
+            for token in ("price", "prices", "cost", "costs", "fee", "fees", "rent", "weekly", "per week")
+        )
+        return has_extreme and has_price_signal
+
+    @staticmethod
+    def _price_extreme_direction(user_query: str) -> Optional[str]:
+        query_lc = (user_query or "").lower()
+        if any(token in query_lc for token in ("cheapest", "lowest", "least expensive", "minimum")):
+            return "min"
+        if any(token in query_lc for token in ("most expensive", "highest", "maximum", "priciest")):
+            return "max"
+        return None
+
+    def _collect_price_candidates(self, evidence: Sequence[EvidenceItem]) -> List[Dict[str, Any]]:
+        hall_names: Dict[int, str] = {}
+        room_names: Dict[tuple[int, int], str] = {}
+        years: Dict[tuple[int, int, int], str] = {}
+
+        parsed_by_item: List[Dict[str, Any]] = []
+        for evidence_id, item in enumerate(evidence, start=1):
+            parsed_lines = self._parse_structured_lines(item.text)
+            parsed_by_item.append(
+                {
+                    "evidence_id": evidence_id,
+                    "item": item,
+                    "lines": parsed_lines,
+                }
+            )
+            for row in parsed_lines:
+                path = row["path"]
+                value = row["value"]
+                hall_match = re.match(r"^\[(\d+)\]\.name$", path)
+                if hall_match:
+                    hall_names[int(hall_match.group(1))] = value
+                    continue
+
+                room_match = re.match(r"^\[(\d+)\]\.room_types\[(\d+)\]\.name$", path)
+                if room_match:
+                    hall_idx = int(room_match.group(1))
+                    room_idx = int(room_match.group(2))
+                    room_names[(hall_idx, room_idx)] = value
+                    continue
+
+                year_match = re.match(r"^\[(\d+)\]\.room_types\[(\d+)\]\.prices\[(\d+)\]\.year$", path)
+                if year_match:
+                    hall_idx = int(year_match.group(1))
+                    room_idx = int(year_match.group(2))
+                    price_idx = int(year_match.group(3))
+                    years[(hall_idx, room_idx, price_idx)] = value
+
+        candidates: List[Dict[str, Any]] = []
+        for parsed_item in parsed_by_item:
+            evidence_id = parsed_item["evidence_id"]
+            item = parsed_item["item"]
+            parsed_lines = parsed_item["lines"]
+            for row in parsed_lines:
+                path = row["path"]
+                value = row["value"]
+                price_match = re.match(
+                    r"^\[(\d+)\]\.room_types\[(\d+)\]\.prices\[(\d+)\]\.per_week_gbp$",
+                    path,
+                )
+                if not price_match:
+                    continue
+
+                hall_idx = int(price_match.group(1))
+                room_idx = int(price_match.group(2))
+                price_idx = int(price_match.group(3))
+                per_week = self._coerce_float(value)
+                if per_week is None:
+                    continue
+
+                hall_name = hall_names.get(hall_idx) or self._infer_hall_name_from_item(item)
+                room_name = room_names.get((hall_idx, room_idx))
+                year = years.get((hall_idx, room_idx, price_idx))
+
+                candidates.append(
+                    {
+                        "evidence_id": evidence_id,
+                        "hall_idx": hall_idx,
+                        "room_idx": room_idx,
+                        "price_idx": price_idx,
+                        "hall_name": hall_name,
+                        "room_name": room_name,
+                        "per_week": per_week,
+                        "year": year,
+                    }
+                )
+        return candidates
+
+    @staticmethod
+    def _parse_structured_lines(text: str) -> List[Dict[str, str]]:
+        rows: List[Dict[str, str]] = []
+        for raw_line in (text or "").splitlines():
+            line = raw_line.strip()
+            if not line or ":" not in line:
+                continue
+            path, value = line.split(":", 1)
+            path = path.strip()
+            value = value.strip()
+            if not path or not value:
+                continue
+            rows.append({"path": path, "value": value})
+        return rows
+
+    @staticmethod
+    def _infer_hall_name_from_item(item: EvidenceItem) -> Optional[str]:
+        hall_like_tags = []
+        for tag in item.entity_tags:
+            value = str(tag or "").strip()
+            if not value:
+                continue
+            if any(keyword in value.lower() for keyword in ("court", "hall", "holt")):
+                hall_like_tags.append(value)
+        return hall_like_tags[0] if hall_like_tags else None
+
+    @staticmethod
+    def _dedupe_price_candidates(candidates: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = []
+        seen = set()
+        for item in candidates:
+            key = (
+                item.get("hall_idx"),
+                item.get("room_idx"),
+                item.get("price_idx"),
+                item.get("per_week"),
+                item.get("hall_name"),
+                item.get("room_name"),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(item)
+        return out
+
+    @staticmethod
+    def _format_price_candidate_label(candidate: Dict[str, Any]) -> str:
+        hall_name = candidate.get("hall_name") or "unknown accommodation"
+        room_name = candidate.get("room_name")
+        return f"{hall_name} ({room_name})" if room_name else str(hall_name)
+
+    @staticmethod
+    def _join_with_and(values: Sequence[str]) -> str:
+        parts = [str(value).strip() for value in values if str(value).strip()]
+        if not parts:
+            return ""
+        if len(parts) == 1:
+            return parts[0]
+        if len(parts) == 2:
+            return f"{parts[0]} and {parts[1]}"
+        return f"{', '.join(parts[:-1])}, and {parts[-1]}"
+
+    @staticmethod
     def _extract_structured_fields(text: str) -> Dict[str, Any]:
         out: Dict[str, Any] = {"prices": {}}
         for raw_line in (text or "").splitlines():
@@ -640,3 +887,10 @@ class AnswererAgent:
         if "." in normalized:
             return f"{number:,.2f}"
         return f"{int(number):,}"
+
+    @staticmethod
+    def _coerce_float(value: Any) -> Optional[float]:
+        try:
+            return float(str(value).replace(",", "").strip())
+        except (TypeError, ValueError, AttributeError):
+            return None

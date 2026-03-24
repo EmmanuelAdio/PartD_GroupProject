@@ -2,8 +2,6 @@
 
 This document explains how the `AnswererAgent` works in simple language first, then in a more technical way for teammates.
 
-## Like I'm 5
-
 Imagine we have:
 
 - a child asking a question
@@ -368,3 +366,4 @@ You can describe it like this:
 ## One-Sentence Summary
 
 The `AnswererAgent` is the part of the system that turns retrieved knowledge-base chunks into a final user-facing answer, while trying to stay grounded, cite evidence, and recover safely when the LLM is weak or unavailable.
+
