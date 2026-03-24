@@ -9,6 +9,7 @@ This repository currently includes working ingestion and retrieval services for 
 6. Plan retrieval queries with an LLM-first Processor Agent
 7. Run hybrid retrieval (vector + lexical + metadata filters)
 8. Merge/rerank evidence and return answerer-ready items
+9. Generate grounded final answers from retrieved evidence with an Answerer Agent
 
 ## Current status
 
@@ -22,11 +23,13 @@ Implemented:
 - `services/index_manager.py`
 - `services/retriever_service.py`
 - `agents/processor_agent.py`
+- `agents/answerer_agent.py`
 - `schemas/models.py`
 - `test_ingestion_service.py`
 - `test_retrieval_service.py`
 - `test_index_manager.py`
 - `test_processor_agent.py`
+- `test_answerer_agent.py`
 
 ## Setup
 
@@ -87,6 +90,23 @@ Index management:
 - `AtlasIndexManager` checks, creates, and reconciles Atlas vector/text search indexes.
 - `MongoRepo.ensure_indexes()` also creates a native Mongo text index:
   `chunk_text_search_idx` on `text`, `title`, `entity_tags` for lexical fallback.
+
+## Answerer agent overview
+
+`AnswererAgent` (`agents/answerer_agent.py`) is the final grounded generation step.
+
+It:
+- receives the raw user query plus retrieved `EvidenceItem`s
+- builds a RAG-style prompt over the retrieved evidence
+- asks `LLMService` for structured answer JSON when OpenAI is available
+- returns an `AnswerResult` with answer text, confidence, and citations
+- falls back to deterministic evidence summarization when no LLM key is configured
+
+It does not:
+- retrieve documents
+- query MongoDB directly
+- plan retrieval filters
+- ingest or embed documents
 
 ## FastAPI integration (app.main)
 
@@ -226,6 +246,7 @@ curl -X POST "http://127.0.0.1:8000/query" \
 ```
 
 Response includes:
+- `answerer_run`
 - `processor_plan`
 - `retrieval_run.attempts_log`
 - `retrieval_run.evidence`

@@ -88,3 +88,26 @@ class EvidenceItem(BaseModel):
     retrieval_channels: List[Literal["vector", "text"]] = Field(default_factory=list)
 
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class AnswerCitation(BaseModel):
+    """Reference to one evidence item used in the final answer."""
+
+    evidence_id: int = Field(ge=1)
+    chunk_id: str
+    source_id: str
+    source_type: Optional[SourceType] = None
+    title: Optional[str] = None
+    section: Optional[str] = None
+    url: Optional[str] = None
+
+
+class AnswerResult(BaseModel):
+    """Grounded answer payload returned by the Answerer Agent."""
+
+    answer: str
+    grounded: bool = True
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    citations: List[AnswerCitation] = Field(default_factory=list)
+    used_evidence_count: int = 0
+    fallback_used: bool = False

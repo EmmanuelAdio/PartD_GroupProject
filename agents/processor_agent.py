@@ -213,6 +213,7 @@ class ProcessorAgent:
             "sections": sections,
             "entity_tags": entity_tags,
             "source_ids": source_ids,
+            "version": self._sanitize_version(planned.version, user_query),
         }
 
         if planned.vector_k is not None:
@@ -258,6 +259,26 @@ class ProcessorAgent:
     def _clamp_int(value: int, *, low: int, high: int) -> int:
         """Clamp integer values into a safe closed interval."""
         return max(low, min(high, int(value)))
+
+    @staticmethod
+    def _sanitize_version(value: Optional[str], user_query: str) -> Optional[str]:
+        """Keep version filters only when the user explicitly asked for them.
+
+        The planner LLM can hallucinate schema-like values such as "1.0", which
+        then become hard metadata filters and wipe out good retrieval results.
+        """
+        version = str(value or "").strip()
+        if not version:
+            return None
+        if len(version) > 40:
+            return None
+        if not re.fullmatch(r"[A-Za-z0-9._-]+", version):
+            return None
+
+        user_query_lc = (user_query or "").lower()
+        if version.lower() not in user_query_lc:
+            return None
+        return version
 
     @staticmethod
     def _preserve_entity_casing_from_query(entity_tags: List[str], user_query: str) -> List[str]:

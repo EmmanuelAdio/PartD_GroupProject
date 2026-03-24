@@ -5,7 +5,7 @@ import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 try:
     from dotenv import load_dotenv
@@ -73,6 +73,20 @@ def handle_ingestion_api(payload: Dict[str, Any]) -> Dict[str, Any]:
 ingestion_orchestrator: Optional[IngestionOrchestrator] = None
 query_orchestrator: Optional[QueryOrchestrator] = None
 
+
+def _shape_query_response(result: Dict[str, Any], *, debug: bool) -> Dict[str, Any]:
+    if debug:
+        return result
+
+    answerer_run = result.get("answerer_run", {}) if isinstance(result, dict) else {}
+    return {
+        "query": result.get("user_query"),
+        "answer": answerer_run.get("answer"),
+        "grounded": answerer_run.get("grounded"),
+        "confidence": answerer_run.get("confidence"),
+        "citations": answerer_run.get("citations", []),
+    }
+
 if FastAPI is not None:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -97,7 +111,7 @@ if FastAPI is not None:
         incremental: bool = True
 
     class IngestPayloadRequest(BaseModel):
-        data: Dict[str, Any] | List[Any]
+        data: Union[Dict[str, Any], List[Any]]
         source_id: str
         title: Optional[str] = None
         incremental: bool = False
@@ -105,6 +119,7 @@ if FastAPI is not None:
     class QueryRequest(BaseModel):
         query: str
         top_k: Optional[int] = None
+        debug: bool = False
 
     @app.get("/health")
     def health():
@@ -157,10 +172,11 @@ if FastAPI is not None:
         try:
             if query_orchestrator is None:
                 raise RuntimeError("QueryOrchestrator is not ready.")
-            return query_orchestrator.run(
+            result = query_orchestrator.run(
                 user_query=req.query,
                 top_k_override=req.top_k,
             )
+            return _shape_query_response(result, debug=req.debug)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 

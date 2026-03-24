@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from agents.answerer_agent import AnswererAgent
 from agents.processor_agent import ProcessorAgent
 from schemas.models import RetrievalQuery
 from services.embedding_service import DeterministicEmbeddingService, EmbeddingService
@@ -255,6 +256,7 @@ class QueryOrchestrator:
         embedder_backend: str = "openai",
         embedding_model: str = "text-embedding-3-small",
         processor_model: str = "gpt-4o-mini",
+        answerer_model: str = "gpt-4o-mini",
         vector_index_name: str = "kb_vector_index",
         atlas_search_index_name: str = "kb_text_index",
     ) -> None:
@@ -264,6 +266,7 @@ class QueryOrchestrator:
         self.repo = MongoRepo(db_name=mongo_db, collection_name=mongo_collection)
         self.embedder = self._build_embedder(embedder_backend, embedding_model)
         self.processor = ProcessorAgent(llm_model=processor_model)
+        self.answerer = AnswererAgent(llm_model=answerer_model)
         self.retriever = RetrieverService(
             repo=self.repo,
             embedder=self.embedder,
@@ -299,12 +302,18 @@ class QueryOrchestrator:
             attempts_log.append({"attempt": 3, "description": "bare_query", "hits": len(results)})
 
         attempt_used = next((a["attempt"] for a in attempts_log if a["hits"] > 0), None)
+        answer_result = self.answerer.answer(
+            user_query=user_query,
+            evidence_items=results,
+            processor_plan=plan,
+        )
 
         return {
             "user_query": user_query,
             "mongo_status": mongo_status,
             "index_health": index_health,
             "processor_plan": plan.model_dump(),
+            "answerer_run": answer_result.model_dump(),
             "retrieval_run": {
                 "attempt_used": attempt_used,
                 "attempts_log": attempts_log,

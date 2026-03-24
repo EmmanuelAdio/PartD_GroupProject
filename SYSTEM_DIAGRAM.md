@@ -21,6 +21,7 @@ flowchart LR
     subgraph QP[Query Pipeline]
         PA[ProcessorAgent<br/>LLM-first RetrievalQuery planner]
         RS[RetrieverService<br/>Hybrid retrieval + rerank]
+        AA[AnswererAgent<br/>Grounded answer generation]
     end
 
     subgraph ING[Ingestion Pipeline]
@@ -51,10 +52,12 @@ flowchart LR
 
     QO --> PA
     QO --> RS
+    QO --> AA
     PA --> LS
     RS --> CH
     RS --> IDX
     RS --> ES
+    AA --> LS
     ES --> OAI
 
     IO --> IS
@@ -69,7 +72,7 @@ flowchart LR
 
 ## Current state reflected by code
 - Backend RAG pipeline is implemented end-to-end (`app/`, `services/`, `agents/`).
-- Query path: `ProcessorAgent` plans structured retrieval, then `RetrieverService` executes hybrid search with fallbacks.
+- Query path: `ProcessorAgent` plans structured retrieval, `RetrieverService` executes hybrid search with fallbacks, then `AnswererAgent` turns evidence into a final grounded answer.
 - Ingestion path: JSON sources are chunked, tagged, embedded, and upserted into Mongo with source manifests for incremental runs.
 - Avatar frontend currently uses local dummy responses and is **not yet connected** to `POST /query`.
 
@@ -85,6 +88,7 @@ sequenceDiagram
     participant PA as ProcessorAgent
     participant LLM as LLMService (OpenAI)
     participant RS as RetrieverService
+    participant AA as AnswererAgent
     participant EMB as EmbeddingService
     participant Mongo as MongoDB/Atlas
 
@@ -128,7 +132,16 @@ sequenceDiagram
         end
     end
 
-    QO-->>API: { processor_plan, attempts_log, evidence, diagnostics }
+    QO->>AA: answer(user_query, evidence, plan)
+    alt OpenAI key available
+        AA->>LLM: generate_json(answer prompt)
+        LLM-->>AA: Answer JSON
+    else No OpenAI key
+        AA-->>AA: Build fallback grounded answer
+    end
+    AA-->>QO: AnswerResult
+
+    QO-->>API: { answerer_run, processor_plan, attempts_log, evidence, diagnostics }
     API-->>AvatarUI: JSON response
     AvatarUI-->>User: Render answer/evidence (integration step)
 ```
