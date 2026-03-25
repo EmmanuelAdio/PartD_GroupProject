@@ -128,6 +128,43 @@ function addMsg(who, text) {
   const div = document.createElement("div");
   div.className = `msg ${who}`;
   div.innerHTML = `<span class="${who}">${who === "me" ? "You" : "Avatar"}:</span> ${text}`;
+
+  if (who === "bot") {
+    const feedbackRow = document.createElement("div");
+    feedbackRow.className = "feedback-row";
+
+    const label = document.createElement("span");
+    label.className = "feedback-label";
+    label.textContent = "Was your question answered?";
+
+    const yesBtn = document.createElement("button");
+    yesBtn.className = "feedback-btn feedback-yes";
+    yesBtn.textContent = "Yes";
+
+    const noBtn = document.createElement("button");
+    noBtn.className = "feedback-btn feedback-no";
+    noBtn.textContent = "No";
+
+    function handleFeedback(answered) {
+      yesBtn.disabled = true;
+      noBtn.disabled = true;
+      feedbackRow.innerHTML = answered
+        ? `<span class="feedback-thanks">Glad we could help!</span>`
+        : `<span class="feedback-thanks">Sorry about that — we'll try to improve.</span>`;
+      console.log("Feedback:", answered ? "answered" : "not answered", "for:", text);
+      // TODO: send feedback to your backend
+      // fetch("/api/feedback", { method: "POST", body: JSON.stringify({ answer: text, resolved: answered }) });
+    }
+
+    yesBtn.addEventListener("click", () => handleFeedback(true));
+    noBtn.addEventListener("click", () => handleFeedback(false));
+
+    feedbackRow.appendChild(label);
+    feedbackRow.appendChild(yesBtn);
+    feedbackRow.appendChild(noBtn);
+    div.appendChild(feedbackRow);
+  }
+
   chatLog.appendChild(div);
   chatLog.scrollTop = chatLog.scrollHeight;
 }
