@@ -1,0 +1,409 @@
+{
+  "raw_query": "How much is Butler Court accommodation?",
+  "retrieval_query_plan": {
+    "query_text": "How much is Butler Court accommodation?",
+    "top_k": 8,
+    "domain": "accommodation",
+    "domains": [
+      "accommodation"
+    ],
+    "entity_tags": [
+      "Butler Court",
+      "accommodation"
+    ],
+    "section": "prices",
+    "sections": [
+      "prices"
+    ],
+    "source_ids": [],
+    "version": null,
+    "vector_k": null,
+    "text_k": null
+  },
+  "retrieval_diagnostics": {
+    "query_text": "How much is Butler Court accommodation?",
+    "top_k": 8,
+    "vector_mode": "atlas_vector",
+    "text_mode": "atlas_search",
+    "vector_fallback_used": false,
+    "text_fallback_used": false,
+    "vector_search_error": null,
+    "atlas_search_error": null,
+    "mongo_text_error": null,
+    "vector_hits": 32,
+    "text_hits": 32,
+    "final_hits": 8,
+    "boost_sections": [
+      "prices"
+    ],
+    "boost_entity_tags": [
+      "accommodation",
+      "butler court"
+    ],
+    "index_health": {
+      "checked": true,
+      "healthy": true,
+      "vector_index_found": true,
+      "vector_index_status": "READY",
+      "vector_index_dimensions": 1536,
+      "text_index_found": true,
+      "text_index_status": "READY",
+      "errors": []
+    }
+  },
+  "result_count": 8,
+  "evidence": [
+    {
+      "chunk_id": "8ff0292a10262db8d8bdb56141831e5aa38df90a",
+      "source_id": "accommodation_halls",
+      "source_type": "json",
+      "title": "Accommodation Halls",
+      "url": null,
+      "text": "[0].name: Butler Court\n[0].type: hall\n[0].address: Butler Court Loughborough University LE11 3TS\n[0].short_description: Located in East Park, near the School of Design and Creative Arts and our rugby pitches. Butler Court is a very tight knit community where morale is high and there is a great social life. The hall is named after Sir Clifford Butler, Vice-Chancellor of the University from 1975-1985.\n[0].catering_type: self_catered\n[0].days_catered: None\n[0].meals_per_week: None\n[0].services[0]: Fortnightly bedroom cleaning\n[0].services[1]: Weekly cleaning of kitchens and communal areas\n[0].services[2]: Communal bathrooms and toilet facilities will be cleaned a minimum of three times a week\n[0].facilities[0]: Deluxe flats have sofa and TV in the kitchen\n[0].facilities[1]: Electric hobs in the kitchen\n[0].facilities[2]: Large games/common room including TV, table tennis and table football\n[0].facilities[3]: Unlimited wired and wireless internet access\n[0].facilities[4]: Card/mobile app operated launderette\n[0].facilities[5]: Bike shed\n[0].room_types[0].name: Standard\n[0].room_types[0].ensuite: False\n[0].room_types[0].bathroom_type: shared\n[0].room_types[0].occupancy: single\n[0].room_types[0].tenancy_weeks: 41\n[0].room_types[0].number_of_beds: 4\n[0].room_types[0].prices[0].year: 2025/26\n[0].room_types[0].prices[0].per_week_gbp: 126.68\n[0].room_types[0].prices[0].total_contract_gbp: 5302.27\n[0].room_types[0].available_to[0]: undergraduate\n[0].room_types[0].available_to[1]: international\n[0].room_types[1].name: Shared Twin with En-Suite\n[0].room_types[1].ensuite: True\n[0].room_types[1].bathroom_type: en-suite",
+      "domain": "accommodation",
+      "entity_tags": [
+        "Butler Court",
+        "Standard",
+        "Shared Twin with En-Suite",
+        "Butler Court Loughborough University",
+        "Located",
+        "East Park",
+        "School",
+        "Design",
+        "Creative Arts",
+        "The",
+        "Sir Clifford Butler",
+        "Vice"
+      ],
+      "section": "json_fields",
+      "order": 0,
+      "version": "test-v2",
+      "score": 1.3,
+      "vector_score": 0.8381856679916382,
+      "text_score": 20.110647201538086,
+      "retrieval_channels": [
+        "vector",
+        "text"
+      ],
+      "metadata": {
+        "key_fields": {
+          "contains_price": true,
+          "contains_entry_requirements": false,
+          "contains_location": true,
+          "contains_question_answer": false,
+          "sample_price_lines": [
+            "[0].room_types[0].prices[0].per_week_gbp: 126.68"
+          ],
+          "sample_name": "Butler Court"
+        },
+        "confidence": 0.35
+      }
+    },
+    {
+      "chunk_id": "0e5482d2fccad289f1e88de95bd03a2aea5dcdf1",
+      "source_id": "accommodation_halls",
+      "source_type": "json",
+      "title": "Accommodation Halls",
+      "url": null,
+      "text": "[0].let_lengths[2].label: International ON CAMPUS Students\n[0].let_lengths[2].audience: international\n[0].let_lengths[2].start_date: 2025-09-22\n[0].let_lengths[2].end_date: 2026-07-11\n[0].let_lengths[3].weeks: 18\n[0].let_lengths[3].label: Semester 1\n[0].let_lengths[3].audience: semester_1\n[0].let_lengths[3].start_date: 2025-09-22\n[0].let_lengths[3].end_date: 2026-01-30\n[0].let_lengths[4].weeks: 23\n[0].let_lengths[4].label: Semester 2\n[0].let_lengths[4].audience: semester_2\n[0].let_lengths[4].start_date: 2026-02-01\n[0].let_lengths[4].end_date: 2026-07-11\n[0].contacts.general_enquiries_email: eastparkreception@lboro.ac.uk\n[0].contacts.general_enquiries_phone: +44 (0)1509 223819\n[0].contacts.hall_manager.name: Sarah Hooley\n[0].contacts.hall_manager.phone: +44 (0)1509 223819\n[0].contacts.warden.name: Email:\n[0].contacts.warden.email: butlercourt.warden@lboro.ac.uk\n[0].contacts.warden.phone: None\n[0].contacts.subwardens[0].name: Harry Macnamara\n[0].contacts.subwardens[1].name: Nana Yaa Nsiah-Appiah\n[0].contacts.subwardens[2].name: Chukwudi Ogunna\n[0].contacts.duty_mobile: 07731 990251\n[0].official_url: https://www.lboro.ac.uk/services/accommodation/our-halls/butler-court/\n[0].contact_email: sac@mailbox.lboro.ac.uk\n[0].contact_phone: +44 01509 274488\n[0].last_updated.$date: 2025-12-10T18:34:19.437643Z\n[1].name: Cayley",
+      "domain": "accommodation",
+      "entity_tags": [
+        "Sarah Hooley",
+        "+44 (0)1509 223819",
+        "Email:",
+        "Harry Macnamara",
+        "Nana Yaa Nsiah-Appiah",
+        "Chukwudi Ogunna",
+        "Cayley",
+        "International",
+        "Students",
+        "Semester",
+        "Email",
+        "None"
+      ],
+      "section": "json_fields",
+      "order": 2,
+      "version": "test-v2",
+      "score": 0.9225460996193977,
+      "vector_score": 0.7376661896705627,
+      "text_score": 10.551030158996582,
+      "retrieval_channels": [
+        "vector",
+        "text"
+      ],
+      "metadata": {
+        "key_fields": {
+          "contains_price": false,
+          "contains_entry_requirements": false,
+          "contains_location": true,
+          "contains_question_answer": false,
+          "sample_name": "Sarah Hooley"
+        },
+        "confidence": 0.35
+      }
+    },
+    {
+      "chunk_id": "f62e28cb5a6345bddc9857c35130a361d107407c",
+      "source_id": "accommodation_halls",
+      "source_type": "json",
+      "title": "Accommodation Halls",
+      "url": null,
+      "text": "[13].contacts.duty_mobile: 07812012252\n[13].official_url: https://www.lboro.ac.uk/services/accommodation/our-halls/telford/\n[13].contact_email: sac@mailbox.lboro.ac.uk\n[13].contact_phone: +44 01509 274488\n[13].last_updated.$date: 2025-12-10T18:34:21.459445Z\n[14].name: The Holt\n[14].type: hall\n[14].address: The Holt Holt Drive LE11 3JB\n[14].short_description: Situated approximately a 10-minute walk from the centre of campus and a 15-minute walk from the town centre, The Holt is off Forest Road on the East side of campus. The Holt is redeveloped accommodation, owned and managed by our partners, Unite Students. The Old Holt is a listed Victorian mansion around which the development was constructed.\n[14].catering_type: self_catered\n[14].days_catered: None\n[14].meals_per_week: None\n[14].services[0]: No bedroom cleaning\n[14].services[1]: Kitchens and communal areas cleaned weekly in standard flats and en-ensuite flats\n[14].services[2]: Communal bathrooms and toilet facilities cleaned weekly\n[14].facilities[0]: 3-6 students share large dining kitchens\n[14].facilities[1]: Large common/games rooms - Freeview TV area, pool and football table (facilities subject to change)\n[14].facilities[2]: The University network and internet access are available by both wired and wireless network\n[14].facilities[3]: Bike sheds (bicycles stored at this hall are covered under the University or Unite block insurance policy)\n[14].facilities[4]: Limited parking available through Unite Students\n[14].facilities[5]: Mobile app operated launderette\n[14].room_types[0].name: One bedroom, 4ft bed, in 2 bedroom bungalow\n[14].room_types[0].ensuite: False\n[14].room_types[0].bathroom_type: shared\n[14].room_types[0].occupancy: single\n[14].room_types[0].tenancy_weeks: 41\n[14].room_types[0].number_of_beds: 6\n[14].room_types[0].prices[0].year: 2025/26\n[14].room_types[0].prices[0].per_week_gbp: 165.41\n[14].room_types[0].prices[0].total_contract_gbp: 6900.14",
+      "domain": "accommodation",
+      "entity_tags": [
+        "The Holt",
+        "One bedroom, 4ft bed, in 2 bedroom bungalow",
+        "The Holt Holt Drive",
+        "Situated",
+        "Forest Road",
+        "East",
+        "Unite Students",
+        "The Old Holt",
+        "Victorian",
+        "None",
+        "No",
+        "Kitchens"
+      ],
+      "section": "json_fields",
+      "order": 33,
+      "version": "test-v2",
+      "score": 0.7693556079567647,
+      "vector_score": 0.7347284555435181,
+      "text_score": 4.03788948059082,
+      "retrieval_channels": [
+        "vector",
+        "text"
+      ],
+      "metadata": {
+        "key_fields": {
+          "contains_price": true,
+          "contains_entry_requirements": false,
+          "contains_location": true,
+          "contains_question_answer": false,
+          "sample_price_lines": [
+            "[14].room_types[0].prices[0].per_week_gbp: 165.41"
+          ],
+          "sample_name": "The Holt"
+        },
+        "confidence": 0.35
+      }
+    },
+    {
+      "chunk_id": "2225078147929816655480de864eea6a08f54d84",
+      "source_id": "accommodation_halls",
+      "source_type": "json",
+      "title": "Accommodation Halls",
+      "url": null,
+      "text": "[16].room_types[3].prices[0].per_week_gbp: 213.5\n[16].room_types[3].prices[0].total_contract_gbp: 8875.57\n[16].room_types[3].available_to[0]: undergraduate\n[16].room_types[4].name: One bedroom self-contained flat\n[16].room_types[4].ensuite: False\n[16].room_types[4].bathroom_type: shared\n[16].room_types[4].occupancy: single\n[16].room_types[4].tenancy_weeks: 41\n[16].room_types[4].number_of_beds: 1\n[16].room_types[4].prices[0].year: 2025/26\n[16].room_types[4].prices[0].per_week_gbp: 227.06\n[16].room_types[4].prices[0].total_contract_gbp: 9439.22\n[16].room_types[4].available_to[0]: undergraduate\n[16].room_types[5].name: Standard, 4ft bed in Villa\n[16].room_types[5].ensuite: False\n[16].room_types[5].bathroom_type: shared\n[16].room_types[5].occupancy: single\n[16].room_types[5].tenancy_weeks: 41\n[16].room_types[5].number_of_beds: 7\n[16].room_types[5].prices[0].year: 2025/26\n[16].room_types[5].prices[0].per_week_gbp: 153.4\n[16].room_types[5].prices[0].total_contract_gbp: 6376.87\n[16].room_types[5].available_to[0]: undergraduate\n[16].room_types[6].name: Standard (double bed) in Villa\n[16].room_types[6].ensuite: False\n[16].room_types[6].bathroom_type: shared\n[16].room_types[6].occupancy: double\n[16].room_types[6].tenancy_weeks: 41\n[16].room_types[6].number_of_beds: 12\n[16].room_types[6].prices[0].year: 2025/26",
+      "domain": "accommodation",
+      "entity_tags": [
+        "One bedroom self-contained flat",
+        "Standard, 4ft bed in Villa",
+        "Standard (double bed) in Villa",
+        "One",
+        "False",
+        "Standard",
+        "Villa"
+      ],
+      "section": "json_fields",
+      "order": 40,
+      "version": "test-v2",
+      "score": 0.7035909401695439,
+      "vector_score": 0.7530080080032349,
+      "text_score": 1.3319960832595825,
+      "retrieval_channels": [
+        "vector",
+        "text"
+      ],
+      "metadata": {
+        "key_fields": {
+          "contains_price": true,
+          "contains_entry_requirements": false,
+          "contains_location": false,
+          "contains_question_answer": false,
+          "sample_price_lines": [
+            "[16].room_types[3].prices[0].per_week_gbp: 213.5",
+            "[16].room_types[4].prices[0].per_week_gbp: 227.06",
+            "[16].room_types[5].prices[0].per_week_gbp: 153.4"
+          ],
+          "sample_name": "One bedroom self-contained flat"
+        },
+        "confidence": 0.35
+      }
+    },
+    {
+      "chunk_id": "b09562973306b3966097e233a47f115714ee162e",
+      "source_id": "accommodation_halls",
+      "source_type": "json",
+      "title": "Accommodation Halls",
+      "url": null,
+      "text": "[16].room_types[0].prices[0].per_week_gbp: 148.15\n[16].room_types[0].prices[0].total_contract_gbp: 6158.97\n[16].room_types[0].available_to[0]: undergraduate\n[16].room_types[1].name: Standard, 4ft bed in 3-5 bed flat\n[16].room_types[1].ensuite: False\n[16].room_types[1].bathroom_type: shared\n[16].room_types[1].occupancy: single\n[16].room_types[1].tenancy_weeks: 41\n[16].room_types[1].number_of_beds: 113\n[16].room_types[1].prices[0].year: 2025/26\n[16].room_types[1].prices[0].per_week_gbp: 156.58\n[16].room_types[1].prices[0].total_contract_gbp: 6509.27\n[16].room_types[1].available_to[0]: undergraduate\n[16].room_types[2].name: En-suite, 4ft bed\n[16].room_types[2].ensuite: True\n[16].room_types[2].bathroom_type: en-suite\n[16].room_types[2].occupancy: single\n[16].room_types[2].tenancy_weeks: 41\n[16].room_types[2].number_of_beds: 162\n[16].room_types[2].prices[0].year: 2025/26\n[16].room_types[2].prices[0].per_week_gbp: 190.7\n[16].room_types[2].prices[0].total_contract_gbp: 7927.64\n[16].room_types[2].available_to[0]: undergraduate\n[16].room_types[3].name: Studio Flat, double bed\n[16].room_types[3].ensuite: False\n[16].room_types[3].bathroom_type: shared\n[16].room_types[3].occupancy: double\n[16].room_types[3].tenancy_weeks: 41\n[16].room_types[3].number_of_beds: 12\n[16].room_types[3].prices[0].year: 2025/26",
+      "domain": "accommodation",
+      "entity_tags": [
+        "Standard, 4ft bed in 3-5 bed flat",
+        "En-suite, 4ft bed",
+        "Studio Flat, double bed",
+        "Standard",
+        "False",
+        "En",
+        "True",
+        "Studio Flat"
+      ],
+      "section": "json_fields",
+      "order": 39,
+      "version": "test-v2",
+      "score": 0.675129858791297,
+      "vector_score": 0.7482430934906006,
+      "text_score": 1.3319960832595825,
+      "retrieval_channels": [
+        "vector",
+        "text"
+      ],
+      "metadata": {
+        "key_fields": {
+          "contains_price": true,
+          "contains_entry_requirements": false,
+          "contains_location": false,
+          "contains_question_answer": false,
+          "sample_price_lines": [
+            "[16].room_types[0].prices[0].per_week_gbp: 148.15",
+            "[16].room_types[1].prices[0].per_week_gbp: 156.58",
+            "[16].room_types[2].prices[0].per_week_gbp: 190.7"
+          ],
+          "sample_name": "Standard, 4ft bed in 3-5 bed flat"
+        },
+        "confidence": 0.35
+      }
+    },
+    {
+      "chunk_id": "b42f9d20d1b4dc93f7eab76bf9e2f1bd4315bd76",
+      "source_id": "accommodation_halls",
+      "source_type": "json",
+      "title": "Accommodation Halls",
+      "url": null,
+      "text": "[10].contacts.general_enquiries_phone: +44 (0)1509 222254\n[10].contacts.hall_manager.name: Carl Cooke\n[10].contacts.hall_manager.phone: +44 (0)1509 222254\n[10].contacts.warden.name: Email:\n[10].contacts.warden.email: bakewell.warden@lboro.ac.uk\n[10].contacts.warden.phone: +44 (0)1509 226557\n[10].contacts.subwardens[0].name: Greeshma Girdhar\n[10].contacts.subwardens[1].name: Tunmike Olowe\n[10].contacts.subwardens[2].name: Mohammad Abdullah\n[10].contacts.duty_mobile: 07518420547\n[10].official_url: https://www.lboro.ac.uk/services/accommodation/our-halls/robert-bakewell/\n[10].contact_email: sac@mailbox.lboro.ac.uk\n[10].contact_phone: +44 01509 274488\n[10].last_updated.$date: 2025-12-10T18:34:20.970926Z\n[11].name: Royce\n[11].type: hall\n[11].address: Royce Hall Loughborough University LE11 3TJ\n[11].short_description: Located in the popular student village, Royce consists of 19 accommodation blocks of two and three storeys. It is close to lecture halls, sports facilities, the library and is only a 20-minute walk from town. The hall is named after Sir Henry Royce, founder member of Rolls-Royce Ltd, a pioneer of aeronautical engineering in education.\n[11].catering_type: catered\n[11].days_catered: Monday–Friday\n[11].meals_per_week: 15\n[11].services[0]: Fortnightly bedroom cleaning\n[11].services[1]: Weekly cleaning of kitchens and communal areas\n[11].services[2]: Communal bathrooms and toilet facilities will be cleaned a minimum of three times a week\n[11].facilities[0]: 2 - 8 students share a kitchenette (number sharing facilities is higher in some larger blocks)\n[11].facilities[1]: Large common/games room - Freeview TV, table football, darts and more (facilities subject to change)\n[11].facilities[2]: The University network and internet access are available by both wired and wireless networks\n[11].facilities[3]: Card/mobile app operated launderette\n[11].facilities[4]: Bike shed\n[11].room_types[0].name: Standard",
+      "domain": "accommodation",
+      "entity_tags": [
+        "Carl Cooke",
+        "+44 (0)1509 222254",
+        "Email:",
+        "Greeshma Girdhar",
+        "Tunmike Olowe",
+        "Mohammad Abdullah",
+        "Royce",
+        "Standard",
+        "Email",
+        "Royce Hall Loughborough University",
+        "Located",
+        "It"
+      ],
+      "section": "json_fields",
+      "order": 26,
+      "version": "test-v2",
+      "score": 0.6662219478782208,
+      "vector_score": 0.7232843637466431,
+      "text_score": 4.063369274139404,
+      "retrieval_channels": [
+        "vector",
+        "text"
+      ],
+      "metadata": {
+        "key_fields": {
+          "contains_price": false,
+          "contains_entry_requirements": false,
+          "contains_location": true,
+          "contains_question_answer": false,
+          "sample_name": "Carl Cooke"
+        },
+        "confidence": 0.35
+      }
+    },
+    {
+      "chunk_id": "945cdfdcf21d620902bb694a2ba8b7e1db35fb73",
+      "source_id": "accommodation_halls",
+      "source_type": "json",
+      "title": "Accommodation Halls",
+      "url": null,
+      "text": "[9].contacts.subwardens[0].name: Kevin Tan\n[9].contacts.subwardens[1].name: Brian Wong\n[9].contacts.subwardens[2].name: Muhammad (Zee) Asad\n[9].contacts.subwardens[3].name: Johnny Cartucho\n[9].contacts.duty_mobile: 07810 595528\n[9].official_url: https://www.lboro.ac.uk/services/accommodation/our-halls/john-phillips/\n[9].contact_email: sac@mailbox.lboro.ac.uk\n[9].contact_phone: +44 01509 274488\n[9].last_updated.$date: 2025-12-10T18:34:20.835650Z\n[10].name: Robert Bakewell\n[10].type: hall\n[10].address: Robert Bakewell Hall Loughborough University LE11 3UR\n[10].short_description: Located in the student village, Robert Bakewell hall is only a 5-minute walk from the library, a 5-minute walk from the EHB bar and a 10-minute walk to the Students' Union. The hall is named after Robert Bakewell who was an eighteenth-century agriculturalist from nearby Dishley Grange.\n[10].catering_type: self_catered\n[10].days_catered: None\n[10].meals_per_week: None\n[10].services[0]: Fortnightly bedroom cleaning\n[10].services[1]: Weekly cleaning of kitchens and communal areas\n[10].facilities[0]: Central card operated launderette (the Hub)\n[10].facilities[1]: Games/common room (facilities subject to change)\n[10].facilities[2]: Iron provided\n[10].facilities[3]: The University network and internet access are available by both wired and wireless networks\n[10].facilities[4]: Bike shed\n[10].room_types[0].name: En-suite, 4ft bed\n[10].room_types[0].ensuite: True\n[10].room_types[0].bathroom_type: en-suite\n[10].room_types[0].occupancy: single\n[10].room_types[0].tenancy_weeks: 41\n[10].room_types[0].number_of_beds: 400\n[10].room_types[0].prices[0].year: 2025/26",
+      "domain": "accommodation",
+      "entity_tags": [
+        "Kevin Tan",
+        "Brian Wong",
+        "Muhammad (Zee) Asad",
+        "Johnny Cartucho",
+        "Robert Bakewell",
+        "En-suite, 4ft bed",
+        "Muhammad",
+        "Zee",
+        "Asad",
+        "Robert Bakewell Hall Loughborough",
+        "University",
+        "Located"
+      ],
+      "section": "json_fields",
+      "order": 24,
+      "version": "test-v2",
+      "score": 0.6542170510569847,
+      "vector_score": 0.7318580150604248,
+      "text_score": 3.5915117263793945,
+      "retrieval_channels": [
+        "vector",
+        "text"
+      ],
+      "metadata": {
+        "key_fields": {
+          "contains_price": false,
+          "contains_entry_requirements": false,
+          "contains_location": true,
+          "contains_question_answer": false,
+          "sample_name": "Kevin Tan"
+        },
+        "confidence": 0.35
+      }
+    },
+    {
+      "chunk_id": "dff4bfbab123dba043c5721c25f69917d8155812",
+      "source_id": "accommodation_halls",
+      "source_type": "json",
+      "title": "Accommodation Halls",
+      "url": null,
+      "text": "[16].room_types[6].prices[0].per_week_gbp: 159.15\n[16].room_types[6].prices[0].total_contract_gbp: 6615.98\n[16].room_types[6].available_to[0]: undergraduate\n[16].room_types[7].name: Large standard (double bed) in Villa\n[16].room_types[7].ensuite: False\n[16].room_types[7].bathroom_type: shared\n[16].room_types[7].occupancy: double\n[16].room_types[7].tenancy_weeks: 41\n[16].room_types[7].number_of_beds: 17\n[16].room_types[7].prices[0].year: 2025/26\n[16].room_types[7].prices[0].per_week_gbp: 167.65\n[16].room_types[7].prices[0].total_contract_gbp: 6969.27\n[16].room_types[7].available_to[0]: undergraduate\n[16].room_types[8].name: En-suite (double bed) in Villa\n[16].room_types[8].ensuite: True\n[16].room_types[8].bathroom_type: en-suite\n[16].room_types[8].occupancy: double\n[16].room_types[8].tenancy_weeks: 41\n[16].room_types[8].number_of_beds: 1\n[16].room_types[8].prices[0].year: 2025/26\n[16].room_types[8].prices[0].per_week_gbp: 172.73\n[16].room_types[8].prices[0].total_contract_gbp: 7180.64\n[16].room_types[8].available_to[0]: undergraduate\n[16].room_types[9].name: Large en-suite (double bed) in Villa\n[16].room_types[9].ensuite: True\n[16].room_types[9].bathroom_type: en-suite\n[16].room_types[9].occupancy: double\n[16].room_types[9].tenancy_weeks: 41\n[16].room_types[9].number_of_beds: 1\n[16].room_types[9].prices[0].year: 2025/26",
+      "domain": "accommodation",
+      "entity_tags": [
+        "Large standard (double bed) in Villa",
+        "En-suite (double bed) in Villa",
+        "Large en-suite (double bed) in Villa",
+        "Large",
+        "Villa",
+        "False",
+        "En",
+        "True"
+      ],
+      "section": "json_fields",
+      "order": 41,
+      "version": "test-v2",
+      "score": 0.6520750933355254,
+      "vector_score": 0.7432846426963806,
+      "text_score": 1.3319960832595825,
+      "retrieval_channels": [
+        "vector",
+        "text"
+      ],
+      "metadata": {
+        "key_fields": {
+          "contains_price": true,
+          "contains_entry_requirements": false,
+          "contains_location": false,
+          "contains_question_answer": false,
+          "sample_price_lines": [
+            "[16].room_types[6].prices[0].per_week_gbp: 159.15",
+            "[16].room_types[7].prices[0].per_week_gbp: 167.65",
+            "[16].room_types[8].prices[0].per_week_gbp: 172.73"
+          ],
+          "sample_name": "Large standard (double bed) in Villa"
+        },
+        "confidence": 0.35
+      }
+    }
+  ]
+}

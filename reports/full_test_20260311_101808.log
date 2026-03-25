@@ -1,0 +1,200 @@
+=== INGESTION (OpenAI embeddings, reingest) ===
+
+[MONGO UPLOAD TEST]
+  database: open_day_knowledge
+  collection: kb_chuncks
+  embedder: openai
+  tagger: heuristic
+  files to ingest: 5
+
+[accommodation_halls.json]
+  local records built: 0
+  records returned: 0
+  records in Mongo by source_id=accommodation_halls: 44
+
+[all_ug_courses.json]
+  local records built: 0
+  records returned: 0
+  records in Mongo by source_id=all_ug_courses: 521
+
+[contextual_offer_faqs.json]
+  local records built: 0
+  records returned: 0
+  records in Mongo by source_id=contextual_offer_faqs: 2
+
+[fees_faqs.json]
+  local records built: 1
+  records returned: 1
+  records in Mongo by source_id=fees_faqs: 1
+
+[lboro_sport_faqs.json]
+  local records built: 0
+  records returned: 0
+  records in Mongo by source_id=lboro_sport_faqs: 3
+
+[MONGO SUMMARY]
+  total local records built: 1
+  total Mongo records across ingested source_ids: 571
+
+=== INDEX RECONCILE (OpenAI dims) ===
+[INDEX MANAGER TEST]
+  database: open_day_knowledge
+  collection: kb_chuncks
+  total docs: 571
+
+[CHECK]
+Vector index 'READY' found=True
+Text index   'READY' found=True
+Vector dimensions: 1536
+
+[ENSURE]
+Vector index 'READY' found=True
+Text index   'READY' found=True
+Vector dimensions: 1536
+
+=== RETRIEVAL ===
+[MONGO STATUS]
+  database: open_day_knowledge
+  collection: kb_chuncks
+  total chunk docs: 571
+
+[INDEX HEALTH]
+Vector index 'READY' found=True
+Text index   'READY' found=True
+Vector dimensions: 1536
+
+[RETRIEVAL TEST]
+  total queries: 3
+
+[QUERY 1]
+  query_text: Butler Court
+  top_k: 6
+  filters: {"domains": ["accommodation"], "entity_tags": ["Butler Court"]}
+  fallback_used: NO (vector_mode=atlas_vector, text_mode=atlas_search)
+  returned evidence: 6
+    1. score=1.3000 channels=[vector,text] source=accommodation_halls chunk=8ff0292a10262db8d8bdb56141831e5aa38df90a
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[0].name: Butler Court [0].type: hall [0].address: Butler Court Loughborough University LE11 3TS [0].short_description: Located in East Park, near the School of Design and Creative Arts and our rugby pitches. Butler Cour...
+    2. score=0.7139 channels=[vector,text] source=accommodation_halls chunk=928846395a2683d8841eff67bce726bc059c4673
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[6].contacts.general_enquiries_phone: +44 (0)1509 223914 [6].contacts.hall_manager.name: Linda Moulton [6].contacts.hall_manager.phone: +44 (0)1509 223914 [6].contacts.warden.name: Email: [6].contacts.warden.email: farad...
+    3. score=0.6363 channels=[vector,text] source=accommodation_halls chunk=0e5482d2fccad289f1e88de95bd03a2aea5dcdf1
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[0].let_lengths[2].label: International ON CAMPUS Students [0].let_lengths[2].audience: international [0].let_lengths[2].start_date: 2025-09-22 [0].let_lengths[2].end_date: 2026-07-11 [0].let_lengths[3].weeks: 18 [0].let...
+    4. score=0.3930 channels=[vector] source=accommodation_halls chunk=945cdfdcf21d620902bb694a2ba8b7e1db35fb73
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[9].contacts.subwardens[0].name: Kevin Tan [9].contacts.subwardens[1].name: Brian Wong [9].contacts.subwardens[2].name: Muhammad (Zee) Asad [9].contacts.subwardens[3].name: Johnny Cartucho [9].contacts.duty_mobile: 07810...
+    5. score=0.3758 channels=[vector] source=accommodation_halls chunk=a9d161ec06b8d95e76d236a2941ff86048efc6dd
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[12].contacts.warden.email: rutherford.warden@lboro.ac.uk [12].contacts.warden.phone: +44 (0)1509 222274 [12].contacts.subwardens[0].name: Mathew Davies [12].contacts.subwardens[1].name: Jacob Vizor [12].contacts.subward...
+    6. score=0.3371 channels=[vector] source=accommodation_halls chunk=f0021d0bb9f9adac11878db65ea82b7448bc63cf
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[11].let_lengths[4].label: Semester 2 [11].let_lengths[4].audience: semester_2 [11].let_lengths[4].start_date: 2026-02-01 [11].let_lengths[4].end_date: 2026-07-11 [11].contacts.general_enquiries_email: villagecentral@mai...
+
+[QUERY 2]
+  query_text: UCAS entry requirements
+  top_k: 6
+  filters: {"domains": ["courses", "admissions"], "entity_tags": ["UCAS"]}
+  fallback_used: NO (vector_mode=atlas_vector, text_mode=atlas_search)
+  returned evidence: 6
+    1. score=1.2000 channels=[vector,text] source=contextual_offer_faqs chunk=16d44e3e125146558b016a14d7079b9dc54dc9ff
+       domain=admissions section=json_fields title=Contextual Offer Faqs
+       text=source_url: https://www.lboro.ac.uk/study/undergraduate/apply/entry-requirements/contextual-admissions/faqs/ scraped_at: 2026-02-22T18:08:34.433841+00:00 sections[0].section_title: Access Loughborough Contextual Offers s...
+    2. score=0.9364 channels=[vector,text] source=all_ug_courses chunk=4ef0d03d84164ed74abdde1e6b28150e386d4262
+       domain=courses section=json_fields title=All Ug Courses
+       text=[59].typical_offer: ABB Entry requirements [59].fees.uk.heading: UK fees [59].fees.uk.Full-time course per annum: ú9,790 [59].fees.uk.Placement year: Approx. 20% of the full-time fee [59].fees.international.heading: Inte...
+    3. score=0.6896 channels=[vector,text] source=contextual_offer_faqs chunk=a3b8d680379e3e576ea5f5d44d10403def658446
+       domain=admissions section=json_fields title=Contextual Offer Faqs
+       text=sections[1].faqs[6].question: Can I be made a reduced offer if I am not eligible for an Access Loughborough Contextual Offer? sections[1].faqs[6].answer: Eligibility for an Access Loughborough Contextual Offer guarantees...
+    4. score=0.6769 channels=[vector,text] source=all_ug_courses chunk=5deff485856056ed39a876c69a485a4552ed09e6
+       domain=courses section=json_fields title=All Ug Courses
+       text=[39].year_abroad_available: True [40].source_url: https://www.lboro.ac.uk/study/undergraduate/courses/design/ [40].scraped_at: 2026-02-06T15:46:19.643454+00:00 [40].course_title: Design [40].degree_classification: BA (Ho...
+    5. score=0.5624 channels=[vector,text] source=all_ug_courses chunk=22b869b4b883807bafaa4bace6f09f55fef5719a
+       domain=courses section=json_fields title=All Ug Courses
+       text=[30].year_abroad_available: True [31].source_url: https://www.lboro.ac.uk/study/undergraduate/courses/computer-science-and-mathematics-bsc/ [31].scraped_at: 2026-02-06T15:46:15.927591+00:00 [31].course_title: Computer Sc...
+    6. score=0.5327 channels=[vector,text] source=all_ug_courses chunk=1b56b3f4fc1dc8e64d26446ed5031b9b9d868ae0
+       domain=courses section=json_fields title=All Ug Courses
+       text=[112].source_url: https://www.lboro.ac.uk/study/undergraduate/courses/sociology/ [112].scraped_at: 2026-02-06T15:46:49.384276+00:00 [112].course_title: Sociology [112].degree_classification: BSc (Hons) [112].typical_offe...
+
+[QUERY 3]
+  query_text: module codes for computer science
+  top_k: 6
+  filters: {"domains": ["courses"]}
+  fallback_used: NO (vector_mode=atlas_vector, text_mode=atlas_search)
+  returned evidence: 6
+    1. score=1.1841 channels=[vector,text] source=all_ug_courses chunk=8e4c3109df91ee94d2052ebf11286c12bc3ee7d5
+       domain=courses section=json_fields title=All Ug Courses
+       text=[34].course_content_by_year[0].modules[3].title: Logic for Computer Science [34].course_content_by_year[0].modules[3].description: The aim of this module is to provide the student with the fundamental notions of logic an...
+    2. score=1.1520 channels=[vector,text] source=all_ug_courses chunk=5a45b78e842b5c75caf173f4158c7a8c9b5f677b
+       domain=courses section=json_fields title=All Ug Courses
+       text=[27].course_content_by_year[0].modules[3].title: Logic for Computer Science [27].course_content_by_year[0].modules[3].description: The aim of this module is to provide the student with the fundamental notions of logic an...
+    3. score=0.9601 channels=[vector,text] source=all_ug_courses chunk=7c840ee7ad27e44f361fe940697bb0c9a88b1494
+       domain=courses section=json_fields title=All Ug Courses
+       text=[33].course_content_by_year[2].modules[16].description: The aim of this module is to introduce the students to the main cryptographic techniques in use today as well as their application to various areas of network secur...
+    4. score=0.9522 channels=[vector,text] source=all_ug_courses chunk=c726f7ee51e43e0246bf2ff8b8b813466df97f43
+       domain=courses section=json_fields title=All Ug Courses
+       text=[33].why_choose_us_stats[0].source: The Times and Sunday Times Good University Guide 2026 [33].why_choose_us_stats[1].stat: 100% [33].why_choose_us_stats[1].text: of Computer Science research impact rated 'world-leading'...
+    5. score=0.9438 channels=[vector,text] source=all_ug_courses chunk=000dd39296f7a550ad10acb3178952bfe3467e37
+       domain=courses section=json_fields title=All Ug Courses
+       text=[30].course_content_by_year[0].modules[4].title: Fundamentals of Software Engineering [30].course_content_by_year[0].modules[4].description: The aim of this module is to introduce the student to the basic concepts, princ...
+    6. score=0.8920 channels=[vector,text] source=all_ug_courses chunk=f1db19e29cfdb169ba29d3313a48f79fdaec1ec2
+       domain=courses section=json_fields title=All Ug Courses
+       text=Throughout your studies you will benefit from the high-quality resources in the department, including the use of five well-stocked general computing laboratories and specialist lab facilities for work on robotics, networ...
+
+=== PROCESSOR+RETRIEVAL ===
+[MONGO STATUS]
+  database: open_day_knowledge
+  collection: kb_chuncks
+  total chunk docs: 571
+
+[PROCESSOR PLAN]
+{
+  "query_text": "How much is Butler Court accommodation?",
+  "top_k": 8,
+  "domain": null,
+  "domains": [],
+  "entity_tags": [],
+  "section": null,
+  "sections": [],
+  "source_ids": [],
+  "version": null,
+  "vector_k": null,
+  "text_k": null
+}
+
+[INDEX HEALTH]
+Vector index 'READY' found=True
+Text index   'READY' found=True
+Vector dimensions: 1536
+
+[RETRIEVAL RUN]
+  query_text: How much is Butler Court accommodation?
+  top_k: 8
+  fallback_used: NO (vector_mode=atlas_vector, text_mode=atlas_search)
+  returned evidence: 8
+    1. score=1.2000 channels=[vector,text] source=accommodation_halls chunk=8ff0292a10262db8d8bdb56141831e5aa38df90a
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[0].name: Butler Court [0].type: hall [0].address: Butler Court Loughborough University LE11 3TS [0].short_description: Located in East Park, near the School of Design and Creative Arts and our rugby pitches. Butler Cour...
+    2. score=0.9222 channels=[vector,text] source=accommodation_halls chunk=0e5482d2fccad289f1e88de95bd03a2aea5dcdf1
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[0].let_lengths[2].label: International ON CAMPUS Students [0].let_lengths[2].audience: international [0].let_lengths[2].start_date: 2025-09-22 [0].let_lengths[2].end_date: 2026-07-11 [0].let_lengths[3].weeks: 18 [0].let...
+    3. score=0.7484 channels=[vector,text] source=accommodation_halls chunk=f62e28cb5a6345bddc9857c35130a361d107407c
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[13].contacts.duty_mobile: 07812012252 [13].official_url: https://www.lboro.ac.uk/services/accommodation/our-halls/telford/ [13].contact_email: sac@mailbox.lboro.ac.uk [13].contact_phone: +44 01509 274488 [13].last_updat...
+    4. score=0.6453 channels=[vector,text] source=accommodation_halls chunk=b42f9d20d1b4dc93f7eab76bf9e2f1bd4315bd76
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[10].contacts.general_enquiries_phone: +44 (0)1509 222254 [10].contacts.hall_manager.name: Carl Cooke [10].contacts.hall_manager.phone: +44 (0)1509 222254 [10].contacts.warden.name: Email: [10].contacts.warden.email: bak...
+    5. score=0.6333 channels=[vector,text] source=accommodation_halls chunk=945cdfdcf21d620902bb694a2ba8b7e1db35fb73
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[9].contacts.subwardens[0].name: Kevin Tan [9].contacts.subwardens[1].name: Brian Wong [9].contacts.subwardens[2].name: Muhammad (Zee) Asad [9].contacts.subwardens[3].name: Johnny Cartucho [9].contacts.duty_mobile: 07810...
+    6. score=0.6131 channels=[vector,text] source=accommodation_halls chunk=f0021d0bb9f9adac11878db65ea82b7448bc63cf
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[11].let_lengths[4].label: Semester 2 [11].let_lengths[4].audience: semester_2 [11].let_lengths[4].start_date: 2026-02-01 [11].let_lengths[4].end_date: 2026-07-11 [11].contacts.general_enquiries_email: villagecentral@mai...
+    7. score=0.5599 channels=[vector,text] source=accommodation_halls chunk=928846395a2683d8841eff67bce726bc059c4673
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[6].contacts.general_enquiries_phone: +44 (0)1509 223914 [6].contacts.hall_manager.name: Linda Moulton [6].contacts.hall_manager.phone: +44 (0)1509 223914 [6].contacts.warden.name: Email: [6].contacts.warden.email: farad...
+    8. score=0.5353 channels=[vector,text] source=accommodation_halls chunk=5a76ec9404bb1dfe70cd1d776286e79d7ab40d77
+       domain=accommodation section=json_fields title=Accommodation Halls
+       text=[15].contacts.subwardens[2].name: Congcong Qi [15].contacts.duty_mobile: 07497806571 [15].official_url: https://www.lboro.ac.uk/services/accommodation/our-halls/towers/ [15].contact_email: sac@mailbox.lboro.ac.uk [15].co...
+
+wrote processor retrieval report: reports\processor_report_20260311_101808.json
