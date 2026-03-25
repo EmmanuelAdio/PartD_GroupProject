@@ -14,10 +14,12 @@ except ImportError:  # pragma: no cover
 
 try:
     from fastapi import FastAPI, HTTPException
+    from fastapi.middleware.cors import CORSMiddleware
     from pydantic import BaseModel
 except ImportError:  # pragma: no cover
     FastAPI = None
     HTTPException = Exception  # type: ignore[assignment]
+    CORSMiddleware = None  # type: ignore[assignment]
     BaseModel = object  # type: ignore[assignment]
 
 from app.orchestrator import IngestionOrchestrator, QueryOrchestrator
@@ -49,6 +51,25 @@ _load_project_env()
 
 def _default_query_embedder_backend() -> str:
     return "openai" if (os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_API_KEY")) else "fake"
+
+def _frontend_origins() -> List[str]:
+    default_origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+    raw = os.getenv("FRONTEND_ORIGINS")
+    if not raw:
+        return default_origins
+
+    origins: List[str] = []
+    seen = set()
+    for part in raw.split(","):
+        value = part.strip()
+        if not value or value in seen:
+            continue
+        seen.add(value)
+        origins.append(value)
+    return origins or default_origins
 
 def handle_ingestion_api(payload: Dict[str, Any]) -> Dict[str, Any]:
     """API-style ingestion handler you can call from routes or other services."""
@@ -105,6 +126,14 @@ if FastAPI is not None:
         version="1.1.0",
         lifespan=lifespan,
     )
+    if CORSMiddleware is not None:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=_frontend_origins(),
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     class IngestFileRequest(BaseModel):
         file_path: str

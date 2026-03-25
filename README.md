@@ -45,13 +45,72 @@ Create `.env`:
 ```env
 MONGODB_URI="your_mongodb_connection_string"
 OPENAI_API_KEY="your_openai_api_key"
+FRONTEND_ORIGINS="http://localhost:5173,http://127.0.0.1:5173"
 ```
 
 Notes:
 - `MONGODB_URI` is required for Mongo upload tests.
 - `OPENAI_API_KEY` is required for `--embedder openai` and `--tagger llm`.
 - `OPEN_API_KEY` is also accepted as an alias for OpenAI key lookup.
+- `FRONTEND_ORIGINS` controls FastAPI CORS origins for browser calls (comma-separated).
 - `app/main.py` now loads `.env` from project root explicitly, with a built-in fallback parser when `python-dotenv` is not installed.
+- Keep provider keys server-side only. Never put `OPENAI_API_KEY` into frontend env files.
+
+## Run the project (backend + frontend)
+
+This is the fastest way to run the full chat app locally.
+
+### Prerequisites
+
+- Python 3.10+ (recommended)
+- Node.js 20.19+ or 22.12+ (Vite 7 requirement)
+- npm
+
+### 1) Start the backend (FastAPI)
+
+From the repo root:
+```bash
+cd c:\Users\Emman\OneDrive\Documents\GitHub\PartD_GroupProject
+pip install -r requirements.txt
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Backend will be available at:
+- `http://127.0.0.1:8000`
+- Health check: `http://127.0.0.1:8000/health`
+
+### 2) Start the frontend (Vite avatar UI)
+
+Open a second terminal:
+```bash
+cd c:\Users\Emman\OneDrive\Documents\GitHub\PartD_GroupProject\cs-avatar
+npm install
+```
+
+Create `cs-avatar/.env` if it does not exist:
+```env
+VITE_API_BASE_URL="http://127.0.0.1:8000"
+```
+
+Then run:
+```bash
+npm run dev
+```
+
+Frontend will usually start on:
+- `http://localhost:5173`
+
+### 3) Verify frontend-backend connection
+
+1. Ensure backend terminal shows uvicorn running on port `8000`.
+2. Open the Vite URL (`http://localhost:5173`).
+3. Send a chat question in the avatar UI.
+4. You should receive a response from `POST /query`.
+
+If browser calls fail due to CORS, verify project root `.env` includes:
+```env
+FRONTEND_ORIGINS="http://localhost:5173,http://127.0.0.1:5173"
+```
 
 ## Processor agent overview
 
@@ -186,6 +245,25 @@ Available endpoints:
 - `POST /ingest/payload`
 - `POST /query`
 
+### 7) Run avatar frontend (Vite)
+
+From `cs-avatar/`, create `.env`:
+```env
+VITE_API_BASE_URL="http://127.0.0.1:8000"
+```
+
+Start Vite:
+```bash
+cd cs-avatar
+npm install
+npm run dev
+```
+
+Local chat startup flow:
+1. Start FastAPI on `127.0.0.1:8000`.
+2. Start Vite on `localhost:5173`.
+3. Open the Vite URL and send a chat message from the avatar UI.
+
 ## FastAPI endpoint usage
 
 Base URL:
@@ -243,6 +321,17 @@ curl -X POST "http://127.0.0.1:8000/query" \
 curl -X POST "http://127.0.0.1:8000/query" \
   -H "Content-Type: application/json" \
   -d "{\"query\":\"UCAS requirements for Computer Science\",\"top_k\":10}"
+```
+
+3. Browser/frontend shape (`debug=false`, default):
+```json
+{
+  "query": "...",
+  "answer": "...",
+  "grounded": true,
+  "confidence": 0.98,
+  "citations": []
+}
 ```
 
 Response includes:

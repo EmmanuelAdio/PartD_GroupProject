@@ -39,6 +39,76 @@ class AnswererAgent:
     - Falls back to deterministic evidence summarization when no LLM key is available.
     """
 
+    _QUERY_STOPWORDS = {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "been",
+        "being",
+        "but",
+        "by",
+        "can",
+        "could",
+        "did",
+        "do",
+        "does",
+        "for",
+        "from",
+        "give",
+        "how",
+        "i",
+        "if",
+        "in",
+        "into",
+        "is",
+        "it",
+        "its",
+        "me",
+        "my",
+        "of",
+        "on",
+        "or",
+        "our",
+        "please",
+        "tell",
+        "that",
+        "the",
+        "their",
+        "them",
+        "there",
+        "these",
+        "they",
+        "this",
+        "those",
+        "to",
+        "us",
+        "was",
+        "we",
+        "were",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "why",
+        "with",
+        "would",
+        "you",
+        "your",
+    }
+    _GENERIC_QUERY_TOKENS = {
+        "answer",
+        "details",
+        "detail",
+        "information",
+        "name",
+        "question",
+    }
+
     def __init__(
         self,
         llm_service: Optional[LLMService] = None,
@@ -67,12 +137,8 @@ class AnswererAgent:
 
         evidence = self._normalize_evidence(evidence_items)
         if not evidence:
-            return AnswerResult(
-                answer="I couldn't find enough relevant information in the knowledge base to answer that confidently.",
-                grounded=False,
-                confidence=0.0,
-                citations=[],
-                used_evidence_count=0,
+            return self._unknown_answer_result(
+                evidence=evidence,
                 fallback_used=self.llm is None,
             )
 
@@ -87,10 +153,11 @@ class AnswererAgent:
                 return extreme_answer
 
         if self.llm is None:
-            return self._fallback_answer(
+            result = self._fallback_answer(
                 user_query=normalized_query,
                 evidence=evidence,
             )
+            return self._apply_unknown_policy(result=result, evidence=evidence)
 
         try:
             llm_payload = self.llm.generate_json(
@@ -112,14 +179,51 @@ class AnswererAgent:
                 llm_result=llm_result,
                 fallback_result=fallback_result,
             ):
-                return fallback_result
-            return llm_result
+                return self._apply_unknown_policy(result=fallback_result, evidence=evidence)
+            return self._apply_unknown_policy(result=llm_result, evidence=evidence)
         except Exception:
             # Keep the answering stage robust even if LLM generation fails.
-            return self._fallback_answer(
+            result = self._fallback_answer(
                 user_query=normalized_query,
                 evidence=evidence,
             )
+            return self._apply_unknown_policy(result=result, evidence=evidence)
+
+    def _apply_unknown_policy(
+        self,
+        *,
+        result: AnswerResult,
+        evidence: Sequence[EvidenceItem],
+    ) -> AnswerResult:
+        if result.grounded:
+            return result
+        return self._unknown_answer_result(
+            evidence=evidence,
+            fallback_used=result.fallback_used,
+        )
+
+    def _unknown_answer_result(
+        self,
+        *,
+        evidence: Sequence[EvidenceItem],
+        fallback_used: bool,
+    ) -> AnswerResult:
+        citation_id = self._first_url_citation_id(evidence)
+        citations = self._build_citations([citation_id], evidence) if citation_id is not None else []
+        help_url = self._knowledgebase_help_url(evidence=evidence)
+
+        answer = "I do not know the answer."
+        if help_url:
+            answer += f" You may find this helpful: {help_url}"
+
+        return AnswerResult(
+            answer=answer,
+            grounded=False,
+            confidence=0.0,
+            citations=citations,
+            used_evidence_count=len(citations),
+            fallback_used=fallback_used,
+        )
 
     @staticmethod
     def _build_system_prompt() -> str:
@@ -213,7 +317,7 @@ class AnswererAgent:
 
         ranked_lines: List[Dict[str, Any]] = []
         query_lc = user_query.lower()
-        query_tokens = self._tokenize(user_query)
+        query_tokens = self._focus_query_tokens(user_query)
 
         for evidence_id, item in enumerate(evidence[: self.max_evidence_items], start=1):
             raw_lines = [self._clean_text(line) for line in item.text.splitlines() if self._clean_text(line)]
@@ -265,6 +369,20 @@ class AnswererAgent:
             citation_ids.append(int(row["evidence_id"]))
             if len(selected_lines) >= 5:
                 break
+
+        if not self._has_sufficient_fallback_relevance(
+            user_query=user_query,
+            selected_lines=selected_lines,
+        ):
+            citations = self._build_citations([1], evidence)
+            return AnswerResult(
+                answer="I found some potentially relevant evidence, but I couldn't reliably synthesize a grounded answer from it.",
+                grounded=False,
+                confidence=0.2,
+                citations=citations,
+                used_evidence_count=len(citations),
+                fallback_used=True,
+            )
 
         citations = self._build_citations(citation_ids, evidence)
         answer = "Based on the retrieved information:\n" + "\n".join(f"- {line}" for line in selected_lines)
@@ -521,6 +639,26 @@ class AnswererAgent:
         return out
 
     @staticmethod
+    def _first_url_citation_id(evidence: Sequence[EvidenceItem]) -> Optional[int]:
+        for idx, item in enumerate(evidence, start=1):
+            if AnswererAgent._clean_text(str(item.url or "")):
+                return idx
+        return None
+
+    @staticmethod
+    def _knowledgebase_help_url(evidence: Sequence[EvidenceItem]) -> str:
+        for item in evidence:
+            url = AnswererAgent._clean_text(str(item.url or ""))
+            if url:
+                return url
+
+        configured = AnswererAgent._clean_text(os.getenv("KNOWLEDGEBASE_HELP_URL", ""))
+        if configured:
+            return configured
+
+        return "https://www.lboro.ac.uk/"
+
+    @staticmethod
     def _has_openai_api_key() -> bool:
         return bool(os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_API_KEY"))
 
@@ -564,6 +702,50 @@ class AnswererAgent:
     @staticmethod
     def _tokenize(text: str) -> List[str]:
         return [token.lower() for token in re.findall(r"[A-Za-z0-9][A-Za-z0-9_\-]*", text or "")]
+
+    @classmethod
+    def _focus_query_tokens(cls, text: str) -> List[str]:
+        out: List[str] = []
+        seen = set()
+        for token in cls._tokenize(text):
+            if len(token) <= 2:
+                continue
+            if token in cls._QUERY_STOPWORDS:
+                continue
+            if token in cls._GENERIC_QUERY_TOKENS:
+                continue
+            if token in seen:
+                continue
+            seen.add(token)
+            out.append(token)
+        return out
+
+    def _has_sufficient_fallback_relevance(
+        self,
+        *,
+        user_query: str,
+        selected_lines: Sequence[str],
+    ) -> bool:
+        if not selected_lines:
+            return False
+
+        query_lc = (user_query or "").lower()
+        if query_lc and any(query_lc in (line or "").lower() for line in selected_lines):
+            return True
+
+        focus_tokens = self._focus_query_tokens(user_query)
+        if not focus_tokens:
+            return False
+
+        matched_tokens = set()
+        for line in selected_lines:
+            line_lc = (line or "").lower()
+            for token in focus_tokens:
+                if token in line_lc:
+                    matched_tokens.add(token)
+
+        required_overlap = 1 if len(focus_tokens) == 1 else 2
+        return len(matched_tokens) >= required_overlap
 
     @staticmethod
     def _format_line_for_user(line: str) -> str:

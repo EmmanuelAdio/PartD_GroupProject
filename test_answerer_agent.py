@@ -27,6 +27,7 @@ def _sample_evidence() -> List[EvidenceItem]:
             source_id="accommodation_halls",
             source_type="json",
             title="Accommodation Halls",
+            url="https://www.lboro.ac.uk/services/accommodation/halls/",
             text=(
                 "room_types[0].prices[0].per_week_gbp: 126.68\n"
                 "room_types[0].prices[0].total_contract_gbp: 5302.27\n"
@@ -192,7 +193,23 @@ def test_answerer_returns_no_evidence_response_when_empty() -> None:
     assert result.grounded is False
     assert result.used_evidence_count == 0
     assert result.citations == []
-    assert "couldn't find enough relevant information" in result.answer.lower()
+    assert result.answer.startswith("I do not know the answer.")
+    assert "https://www.lboro.ac.uk/" in result.answer
+
+
+def test_unknown_answer_prefers_evidence_url_when_available() -> None:
+    agent = AnswererAgent(llm_service=None)
+    result = agent._unknown_answer_result(  # pylint: disable=protected-access
+        evidence=_sample_evidence(),
+        fallback_used=True,
+    )
+
+    assert result.grounded is False
+    assert result.answer.startswith("I do not know the answer.")
+    assert "https://www.lboro.ac.uk/services/accommodation/halls/" in result.answer
+    assert result.used_evidence_count == 1
+    assert len(result.citations) == 1
+    assert result.citations[0].url == "https://www.lboro.ac.uk/services/accommodation/halls/"
 
 
 def test_answerer_fallback_extracts_relevant_lines() -> None:
@@ -214,6 +231,21 @@ def test_answerer_fallback_extracts_relevant_lines() -> None:
     assert result.used_evidence_count >= 1
     assert any(citation.chunk_id == "chunk-1" for citation in result.citations)
     assert "GBP 126.68 per week" in result.answer
+
+
+def test_answerer_fallback_returns_unknown_for_low_relevance_personal_question() -> None:
+    agent = AnswererAgent(llm_service=None)
+
+    result = agent.answer(
+        user_query="What is my middle name?",
+        evidence_items=_sample_evidence(),
+    )
+
+    assert result.fallback_used is True
+    assert result.grounded is False
+    assert result.answer.startswith("I do not know the answer.")
+    assert "Based on the retrieved information" not in result.answer
+    assert "https://www.lboro.ac.uk/services/accommodation/halls/" in result.answer
 
 
 def test_answerer_llm_output_maps_valid_citations_and_ignores_invalid_ids() -> None:
