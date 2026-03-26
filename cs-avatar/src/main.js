@@ -304,33 +304,61 @@ const SpeechRecognition =
 if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.lang = "en-GB";
-  recognition.interimResults = false;
-  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.continuous = true;
+
+  let finalTranscript = "";
+  let silenceTimer = null;
+  const SILENCE_DELAY = 1500; // ms of silence before auto-sending
+
+  function resetSilenceTimer() {
+    if (silenceTimer) clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(() => {
+      if (isListening) recognition.stop();
+    }, SILENCE_DELAY);
+  }
 
   recognition.onstart = () => {
     isListening = true;
+    finalTranscript = "";
     statusEl.textContent = "Listening… ask your question.";
     micBtn.textContent = "🛑";
   };
 
   recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
-    statusEl.textContent = `Heard: "${transcript}"`;
-    textInput.value = transcript;
-
-    // Voice-first behavior: auto-send as soon as we get text
-    handleSend(transcript);
+    let interim = "";
+    finalTranscript = "";
+    for (let i = 0; i < event.results.length; i++) {
+      const result = event.results[i];
+      if (result.isFinal) {
+        finalTranscript += result[0].transcript;
+      } else {
+        interim += result[0].transcript;
+      }
+    }
+    textInput.value = finalTranscript + interim;
+    statusEl.textContent = "Listening…";
+    resetSilenceTimer();
   };
 
   recognition.onerror = (event) => {
-    statusEl.textContent = `Mic error: ${event.error}. You can still type.`;
+    if (silenceTimer) clearTimeout(silenceTimer);
+    if (event.error === "no-speech") {
+      statusEl.textContent = "No speech detected. Try again or type your question.";
+    } else {
+      statusEl.textContent = `Mic error: ${event.error}. You can still type.`;
+    }
   };
 
   recognition.onend = () => {
     isListening = false;
+    if (silenceTimer) clearTimeout(silenceTimer);
     micBtn.textContent = "🎤";
-    // Don’t overwrite error messages; only reset if currently "Listening"
-    if (statusEl.textContent.startsWith("Listening")) {
+    const transcript = (finalTranscript || textInput.value).trim();
+    if (transcript) {
+      statusEl.textContent = `Heard: "${transcript}"`;
+      handleSend(transcript);
+    } else if (!statusEl.textContent.startsWith("Mic error") && !statusEl.textContent.startsWith("No speech")) {
       statusEl.textContent = DEFAULT_STATUS;
     }
   };
@@ -343,6 +371,7 @@ if (SpeechRecognition) {
       return;
     }
     if (isListening) {
+      if (silenceTimer) clearTimeout(silenceTimer);
       recognition.stop();
     } else {
       recognition.start();
