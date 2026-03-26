@@ -305,44 +305,24 @@ if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.lang = "en-GB";
   recognition.interimResults = true;
-  recognition.continuous = true;
-
-  let finalTranscript = "";
-  let silenceTimer = null;
-  const SILENCE_DELAY = 1500; // ms of silence before auto-sending
-
-  function resetSilenceTimer() {
-    if (silenceTimer) clearTimeout(silenceTimer);
-    silenceTimer = setTimeout(() => {
-      if (isListening) recognition.stop();
-    }, SILENCE_DELAY);
-  }
+  recognition.continuous = false;
 
   recognition.onstart = () => {
     isListening = true;
-    finalTranscript = "";
     statusEl.textContent = "Listening… ask your question.";
     micBtn.textContent = "🛑";
   };
 
   recognition.onresult = (event) => {
-    let interim = "";
-    finalTranscript = "";
+    let transcript = "";
     for (let i = 0; i < event.results.length; i++) {
-      const result = event.results[i];
-      if (result.isFinal) {
-        finalTranscript += result[0].transcript;
-      } else {
-        interim += result[0].transcript;
-      }
+      transcript += event.results[i][0].transcript;
     }
-    textInput.value = finalTranscript + interim;
+    textInput.value = transcript;
     statusEl.textContent = "Listening…";
-    resetSilenceTimer();
   };
 
   recognition.onerror = (event) => {
-    if (silenceTimer) clearTimeout(silenceTimer);
     if (event.error === "no-speech") {
       statusEl.textContent = "No speech detected. Try again or type your question.";
     } else {
@@ -352,9 +332,8 @@ if (SpeechRecognition) {
 
   recognition.onend = () => {
     isListening = false;
-    if (silenceTimer) clearTimeout(silenceTimer);
     micBtn.textContent = "🎤";
-    const transcript = (finalTranscript || textInput.value).trim();
+    const transcript = textInput.value.trim();
     if (transcript) {
       statusEl.textContent = `Heard: "${transcript}"`;
       handleSend(transcript);
@@ -371,7 +350,6 @@ if (SpeechRecognition) {
       return;
     }
     if (isListening) {
-      if (silenceTimer) clearTimeout(silenceTimer);
       recognition.stop();
     } else {
       recognition.start();
