@@ -217,6 +217,7 @@ if FastAPI is not None:
             return query_orchestrator.get_status()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
 else:
     app = None
 

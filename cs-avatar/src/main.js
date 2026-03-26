@@ -356,7 +356,6 @@ if (SpeechRecognition) {
     }
   });
 } else {
-  // if browser is unable to support speech-to-text
   micBtn.disabled = true;
   micBtn.title = "Speech-to-text not supported in this browser.";
   statusEl.textContent =
