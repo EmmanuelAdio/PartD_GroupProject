@@ -6,8 +6,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from agents.answerer_agent import AnswererAgent
+from agents.evaluator_agent import EvaluatorAgent
 from agents.processor_agent import ProcessorAgent
-from schemas.models import EvidenceItem, RetrievalQuery
+from schemas.models import (
+    AnswerCitation,
+    AnswerResult,
+    EvaluationResult,
+    EvidenceItem,
+    RetrievalQuery,
+)
 from services.embedding_service import DeterministicEmbeddingService, EmbeddingService
 from services.ingestion_service import IngestionService
 from services.llm_services import LLMService
@@ -267,6 +274,8 @@ class QueryOrchestrator:
         self.embedder = self._build_embedder(embedder_backend, embedding_model)
         self.processor = ProcessorAgent(llm_model=processor_model)
         self.answerer = AnswererAgent(llm_model=answerer_model)
+        self.evaluator = EvaluatorAgent(llm_model=answerer_model)
+        self.max_revise_retries = 1
         self.retriever = RetrieverService(
             repo=self.repo,
             embedder=self.embedder,
@@ -283,49 +292,111 @@ class QueryOrchestrator:
         if top_k_override is not None:
             plan = plan.model_copy(update={"top_k": int(top_k_override)})
 
-        attempts_log: List[Dict[str, Any]] = []
-
-        # Attempt 1: full plan
-        results, diag = self._retrieve(plan)
-        attempts_log.append({"attempt": 1, "description": "full_plan", "hits": len(results)})
-
-        # Attempt 2: drop domain filter
-        if not results:
-            relaxed = plan.model_copy(update={"domain": None, "domains": []})
-            results, diag = self._retrieve(relaxed)
-            attempts_log.append({"attempt": 2, "description": "relax_domain", "hits": len(results)})
-
-        # Attempt 3: bare raw query, no filters
-        if not results:
-            bare = RetrievalQuery(query_text=user_query, top_k=plan.top_k)
-            results, diag = self._retrieve(bare)
-            attempts_log.append({"attempt": 3, "description": "bare_query", "hits": len(results)})
-
-        retrieved_result_count = len(results)
-        results = self._prepare_answer_evidence(
+        retrieval_bundle = self._retrieve_with_fallback(
             user_query=user_query,
             plan=plan,
-            evidence=results,
+            attempt_start=1,
+            phase="initial",
         )
-        diag = dict(diag or {})
-        diag["answer_evidence_expanded"] = len(results) > retrieved_result_count
-        diag["answer_evidence_count"] = len(results)
+        final_plan = retrieval_bundle["plan_used"]
+        attempts_log = list(retrieval_bundle["attempts_log"])
+        final_attempt_used = retrieval_bundle["attempt_used"]
 
-        attempt_used = next((a["attempt"] for a in attempts_log if a["hits"] > 0), None)
-        answer_result = self.answerer.answer(
+        results, diag, retrieved_result_count = self._prepare_answer_inputs(
+            user_query=user_query,
+            plan=final_plan,
+            evidence=retrieval_bundle["results"],
+            diag=retrieval_bundle["diagnostics"],
+        )
+
+        draft_answer = self.answerer.answer(
             user_query=user_query,
             evidence_items=results,
-            processor_plan=plan,
+            processor_plan=final_plan,
         )
+        evaluation = self.evaluator.evaluate(
+            user_query=user_query,
+            retrieval_query=final_plan,
+            evidence=results,
+            draft_answer=draft_answer,
+        )
+        evaluation_history: List[Dict[str, Any]] = [evaluation.model_dump()]
+
+        retries_used = 0
+        while self._should_retry_after_evaluation(
+            verdict=evaluation.verdict,
+            retries_used=retries_used,
+            max_retries=self.max_revise_retries,
+        ):
+            retries_used += 1
+            revised_plan = self._apply_evaluator_suggested_filters(
+                plan=final_plan,
+                suggested_filters=evaluation.suggested_filters,
+            )
+            retry_bundle = self._retrieve_with_fallback(
+                user_query=user_query,
+                plan=revised_plan,
+                attempt_start=len(attempts_log) + 1,
+                phase=f"revise_{retries_used}",
+            )
+            final_plan = retry_bundle["plan_used"]
+            final_attempt_used = retry_bundle["attempt_used"]
+            attempts_log.extend(retry_bundle["attempts_log"])
+
+            results, diag, retrieved_result_count = self._prepare_answer_inputs(
+                user_query=user_query,
+                plan=final_plan,
+                evidence=retry_bundle["results"],
+                diag=retry_bundle["diagnostics"],
+            )
+            draft_answer = self.answerer.answer(
+                user_query=user_query,
+                evidence_items=results,
+                processor_plan=final_plan,
+            )
+            evaluation = self.evaluator.evaluate(
+                user_query=user_query,
+                retrieval_query=final_plan,
+                evidence=results,
+                draft_answer=draft_answer,
+            )
+            evaluation_history.append(evaluation.model_dump())
+
+        effective_verdict = evaluation.verdict
+        if effective_verdict == "revise" and retries_used >= self.max_revise_retries:
+            effective_verdict = "fallback"
+
+        runtime_action = self._decision_for_verdict(effective_verdict)
+        final_answer = draft_answer
+        if runtime_action == "ask_clarification":
+            final_answer = self._build_clarification_answer(
+                evaluation=evaluation,
+                evidence=results,
+            )
+        elif runtime_action == "fallback":
+            final_answer = self._build_safe_fallback_answer(evidence=results)
+
+        evaluator_run = evaluation.model_dump()
+        evaluator_run["effective_verdict"] = effective_verdict
+        evaluator_run["history"] = evaluation_history
 
         return {
             "user_query": user_query,
             "mongo_status": mongo_status,
             "index_health": index_health,
-            "processor_plan": plan.model_dump(),
-            "answerer_run": answer_result.model_dump(),
+            "processor_plan": final_plan.model_dump(),
+            "answerer_run": final_answer.model_dump(),
+            "evaluator_run": evaluator_run,
+            "orchestration_decision": {
+                "initial_verdict": evaluation_history[0].get("verdict"),
+                "final_verdict": evaluation.verdict,
+                "effective_verdict": effective_verdict,
+                "runtime_action": runtime_action,
+                "revise_retries_used": retries_used,
+                "max_revise_retries": self.max_revise_retries,
+            },
             "retrieval_run": {
-                "attempt_used": attempt_used,
+                "attempt_used": final_attempt_used,
                 "attempts_log": attempts_log,
                 "result_count": len(results),
                 "retrieved_result_count": retrieved_result_count,
@@ -333,6 +404,207 @@ class QueryOrchestrator:
                 "evidence": [item.model_dump() for item in results],
             },
         }
+
+    def _retrieve_with_fallback(
+        self,
+        *,
+        user_query: str,
+        plan: RetrievalQuery,
+        attempt_start: int,
+        phase: str,
+    ) -> Dict[str, Any]:
+        attempts_log: List[Dict[str, Any]] = []
+        current_attempt = int(attempt_start)
+
+        results, diag = self._retrieve(plan)
+        attempts_log.append(
+            {"attempt": current_attempt, "description": f"{phase}:full_plan", "hits": len(results)}
+        )
+        plan_used = plan
+        current_attempt += 1
+
+        if not results:
+            relaxed = plan.model_copy(update={"domain": None, "domains": []})
+            results, diag = self._retrieve(relaxed)
+            attempts_log.append(
+                {"attempt": current_attempt, "description": f"{phase}:relax_domain", "hits": len(results)}
+            )
+            plan_used = relaxed
+            current_attempt += 1
+
+        if not results:
+            bare = RetrievalQuery(query_text=user_query, top_k=plan.top_k)
+            results, diag = self._retrieve(bare)
+            attempts_log.append(
+                {"attempt": current_attempt, "description": f"{phase}:bare_query", "hits": len(results)}
+            )
+            plan_used = bare
+
+        attempt_used = next((row["attempt"] for row in attempts_log if row["hits"] > 0), None)
+        return {
+            "plan_used": plan_used,
+            "results": results,
+            "diagnostics": diag,
+            "attempts_log": attempts_log,
+            "attempt_used": attempt_used,
+        }
+
+    def _prepare_answer_inputs(
+        self,
+        *,
+        user_query: str,
+        plan: RetrievalQuery,
+        evidence: List[EvidenceItem],
+        diag: Optional[Dict[str, Any]],
+    ) -> tuple[List[EvidenceItem], Dict[str, Any], int]:
+        retrieved_result_count = len(evidence)
+        prepared = self._prepare_answer_evidence(
+            user_query=user_query,
+            plan=plan,
+            evidence=evidence,
+        )
+        diagnostics = dict(diag or {})
+        diagnostics["answer_evidence_expanded"] = len(prepared) > retrieved_result_count
+        diagnostics["answer_evidence_count"] = len(prepared)
+        return prepared, diagnostics, retrieved_result_count
+
+    @staticmethod
+    def _should_retry_after_evaluation(
+        *,
+        verdict: str,
+        retries_used: int,
+        max_retries: int,
+    ) -> bool:
+        return verdict == "revise" and retries_used < max_retries
+
+    @staticmethod
+    def _decision_for_verdict(verdict: str) -> str:
+        if verdict == "pass":
+            return "pass"
+        if verdict == "ask_clarification":
+            return "ask_clarification"
+        if verdict == "fallback":
+            return "fallback"
+        if verdict == "revise":
+            return "fallback"
+        return "fallback"
+
+    @staticmethod
+    def _apply_evaluator_suggested_filters(
+        *,
+        plan: RetrievalQuery,
+        suggested_filters: Optional[Dict[str, Any]],
+    ) -> RetrievalQuery:
+        payload = dict(suggested_filters or {})
+        merged_domains = QueryOrchestrator._dedupe_values(
+            [plan.domain, *(plan.domains or []), *QueryOrchestrator._coerce_str_list(payload.get("domains"))]
+        )
+        merged_sections = QueryOrchestrator._dedupe_values(
+            [plan.section, *(plan.sections or []), *QueryOrchestrator._coerce_str_list(payload.get("sections"))]
+        )
+        merged_tags = QueryOrchestrator._dedupe_values(
+            [*(plan.entity_tags or []), *QueryOrchestrator._coerce_str_list(payload.get("entity_tags"))]
+        )
+
+        top_k = int(payload.get("top_k", min(12, plan.top_k + 2)))
+        top_k = max(1, min(50, top_k))
+
+        update: Dict[str, Any] = {
+            "top_k": top_k,
+            "domain": merged_domains[0] if merged_domains else None,
+            "domains": merged_domains,
+            "section": merged_sections[0] if merged_sections else None,
+            "sections": merged_sections,
+            "entity_tags": merged_tags,
+        }
+        return plan.model_copy(update=update)
+
+    @staticmethod
+    def _build_clarification_answer(
+        *,
+        evaluation: EvaluationResult,
+        evidence: List[EvidenceItem],
+    ) -> AnswerResult:
+        question = evaluation.clarification_question or "Could you clarify what specific course, hall, or topic you mean?"
+        citations = QueryOrchestrator._first_url_citation(evidence)
+        return AnswerResult(
+            answer=f"To give you a reliable answer, I need one clarification: {question}",
+            grounded=False,
+            confidence=0.2,
+            citations=citations,
+            used_evidence_count=len(citations),
+            fallback_used=True,
+        )
+
+    @staticmethod
+    def _build_safe_fallback_answer(*, evidence: List[EvidenceItem]) -> AnswerResult:
+        help_url = QueryOrchestrator._knowledgebase_help_url(evidence)
+        citations = QueryOrchestrator._first_url_citation(evidence)
+        answer = "I couldn't verify a reliable answer from the available evidence."
+        if help_url:
+            answer += f" Please check the official source: {help_url}"
+        return AnswerResult(
+            answer=answer,
+            grounded=False,
+            confidence=0.0,
+            citations=citations,
+            used_evidence_count=len(citations),
+            fallback_used=True,
+        )
+
+    @staticmethod
+    def _first_url_citation(evidence: List[EvidenceItem]) -> List[AnswerCitation]:
+        for idx, item in enumerate(evidence, start=1):
+            url = QueryOrchestrator._clean_text(str(item.url or ""))
+            if not url:
+                continue
+            return [
+                AnswerCitation(
+                    evidence_id=idx,
+                    chunk_id=item.chunk_id,
+                    source_id=item.source_id,
+                    source_type=item.source_type,
+                    title=item.title,
+                    section=item.section,
+                    url=item.url,
+                )
+            ]
+        return []
+
+    @staticmethod
+    def _knowledgebase_help_url(evidence: List[EvidenceItem]) -> str:
+        for item in evidence:
+            url = QueryOrchestrator._clean_text(str(item.url or ""))
+            if url:
+                return url
+        return "https://www.lboro.ac.uk/"
+
+    @staticmethod
+    def _dedupe_values(values: List[Optional[str]]) -> List[str]:
+        out: List[str] = []
+        seen = set()
+        for raw in values:
+            value = QueryOrchestrator._clean_text(str(raw or ""))
+            if not value:
+                continue
+            key = value.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(value)
+        return out
+
+    @staticmethod
+    def _coerce_str_list(value: Any) -> List[str]:
+        if isinstance(value, list):
+            return [str(item) for item in value]
+        if isinstance(value, str):
+            return [value]
+        return []
+
+    @staticmethod
+    def _clean_text(text: str) -> str:
+        return " ".join((text or "").split()).strip()
 
     def get_status(self) -> Dict[str, Any]:
         """Lightweight status check — no LLM or retrieval calls."""

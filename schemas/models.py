@@ -111,3 +111,57 @@ class AnswerResult(BaseModel):
     citations: List[AnswerCitation] = Field(default_factory=list)
     used_evidence_count: int = 0
     fallback_used: bool = False
+
+
+EvaluationVerdict = Literal["pass", "revise", "ask_clarification", "fallback"]
+
+
+class RuleCheckResult(BaseModel):
+    """Deterministic evaluator output from rule-based verification."""
+
+    grounded: bool = True
+    relevant: bool = True
+    clear: bool = True
+    safe: bool = True
+    issues: List[str] = Field(default_factory=list)
+
+    no_evidence: bool = False
+    weak_evidence: bool = False
+    ambiguous_query: bool = False
+    needs_llm_judge: bool = False
+
+    suggested_action: Optional[str] = None
+    suggested_filters: Optional[Dict[str, Any]] = None
+    clarification_question: Optional[str] = None
+    notes: Optional[str] = None
+    metrics: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LLMJudgeResult(BaseModel):
+    """Optional second-stage evaluator output from an LLM judge."""
+
+    grounded: Optional[bool] = None
+    relevant: Optional[bool] = None
+    clear: Optional[bool] = None
+    safe: Optional[bool] = None
+    issues: List[str] = Field(default_factory=list)
+    suggested_verdict: Optional[EvaluationVerdict] = None
+    suggested_action: Optional[str] = None
+    suggested_filters: Optional[Dict[str, Any]] = None
+    clarification_question: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class EvaluationResult(BaseModel):
+    """Final evaluator verdict consumed by orchestration policy."""
+
+    verdict: EvaluationVerdict
+    grounded: bool
+    relevant: bool
+    clear: bool
+    safe: bool
+    issues: List[str] = Field(default_factory=list)
+    suggested_action: Optional[str] = None
+    suggested_filters: Optional[Dict[str, Any]] = None
+    clarification_question: Optional[str] = None
+    notes: Optional[str] = None

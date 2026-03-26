@@ -10,6 +10,8 @@ This repository currently includes working ingestion and retrieval services for 
 7. Run hybrid retrieval (vector + lexical + metadata filters)
 8. Merge/rerank evidence and return answerer-ready items
 9. Generate grounded final answers from retrieved evidence with an Answerer Agent
+10. Evaluate answer grounding/relevance/safety with a hybrid Evaluator Agent
+11. Apply orchestrator decisions (`pass`, `revise`, `ask_clarification`, `fallback`) before final API output
 
 ## Current status
 
@@ -24,12 +26,14 @@ Implemented:
 - `services/retriever_service.py`
 - `agents/processor_agent.py`
 - `agents/answerer_agent.py`
+- `agents/evaluator_agent.py`
 - `schemas/models.py`
 - `test_ingestion_service.py`
 - `test_retrieval_service.py`
 - `test_index_manager.py`
 - `test_processor_agent.py`
 - `test_answerer_agent.py`
+- `test_evaluator_agent.py`
 
 ## Setup
 
@@ -52,6 +56,7 @@ Notes:
 - `MONGODB_URI` is required for Mongo upload tests.
 - `OPENAI_API_KEY` is required for `--embedder openai` and `--tagger llm`.
 - `OPEN_API_KEY` is also accepted as an alias for OpenAI key lookup.
+- `pytest` is required for the unit test files (install with `pip install pytest`).
 - `FRONTEND_ORIGINS` controls FastAPI CORS origins for browser calls (comma-separated).
 - `app/main.py` now loads `.env` from project root explicitly, with a built-in fallback parser when `python-dotenv` is not installed.
 - Keep provider keys server-side only. Never put `OPENAI_API_KEY` into frontend env files.
@@ -152,7 +157,7 @@ Index management:
 
 ## Answerer agent overview
 
-`AnswererAgent` (`agents/answerer_agent.py`) is the final grounded generation step.
+`AnswererAgent` (`agents/answerer_agent.py`) is the grounded generation step that produces a draft answer before evaluator verification.
 
 It:
 - receives the raw user query plus retrieved `EvidenceItem`s
@@ -166,6 +171,39 @@ It does not:
 - query MongoDB directly
 - plan retrieval filters
 - ingest or embed documents
+
+## Evaluator agent overview
+
+`EvaluatorAgent` (`agents/evaluator_agent.py`) verifies the draft answer before the orchestrator returns the final response.
+
+Design:
+- Layer 1: deterministic rule checks (always on, fast).
+- Layer 2: optional LLM judge (only for ambiguous/borderline cases when an LLM is available).
+
+Inputs:
+- `user_query`
+- `RetrievalQuery` plan (if available)
+- retrieved `EvidenceItem[]`
+- answer draft (`AnswerResult`)
+
+Rule checks currently cover:
+- evidence presence and evidence strength thresholds
+- grounding heuristics (citation validity, numeric support, lexical overlap)
+- relevance to query focus (including price/location/requirements)
+- clarity/usefulness for open-day visitors
+- safety/uncertainty handling under weak evidence
+
+Output:
+- `EvaluationResult` with:
+  - `verdict`: `pass | revise | ask_clarification | fallback`
+  - booleans: `grounded`, `relevant`, `clear`, `safe`
+  - `issues`, `suggested_action`, `suggested_filters`, `clarification_question`, `notes`
+
+Orchestrator policy:
+- `pass`: keep answer
+- `revise`: one retrieval/answer retry with suggested filter adjustments
+- `ask_clarification`: return clarification prompt
+- `fallback`: return safe fallback with official link
 
 ## FastAPI integration (app.main)
 
@@ -334,8 +372,10 @@ curl -X POST "http://127.0.0.1:8000/query" \
 }
 ```
 
-Response includes:
+4. Debug/full shape (`debug=true`) includes multi-agent internals:
 - `answerer_run`
+- `evaluator_run`
+- `orchestration_decision`
 - `processor_plan`
 - `retrieval_run.attempts_log`
 - `retrieval_run.evidence`
@@ -622,6 +662,28 @@ Command:
 ```bash
 python test_processor_agent.py --help
 ```
+
+## Evaluator + orchestration test commands
+
+### 25) Run evaluator unit tests
+
+Command:
+```bash
+python -m pytest test_evaluator_agent.py
+```
+
+### 26) Run orchestration policy + API shape unit tests
+
+Command:
+```bash
+python -m pytest test_query_orchestrator_unit.py test_query_api_shape.py
+```
+
+What these validate:
+- Evaluator verdicts and rule-check behavior
+- Optional LLM-judge gating logic
+- One-retry cap for `revise`
+- Debug payload shape including `evaluator_run`
 
 ## Version numbers in ingestion records
 

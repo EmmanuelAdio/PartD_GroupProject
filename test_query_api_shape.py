@@ -18,6 +18,19 @@ def _sample_query_result():
                 }
             ],
         },
+        "evaluator_run": {
+            "verdict": "pass",
+            "grounded": True,
+            "relevant": True,
+            "clear": True,
+            "safe": True,
+            "issues": [],
+            "effective_verdict": "pass",
+        },
+        "orchestration_decision": {
+            "runtime_action": "pass",
+            "final_verdict": "pass",
+        },
         "retrieval_run": {
             "evidence": [{"chunk_id": "chunk-1"}],
         },
@@ -45,6 +58,12 @@ def test_shape_query_response_returns_minimal_payload_by_default() -> None:
 def test_shape_query_response_keeps_debug_payload_when_requested() -> None:
     result = _sample_query_result()
     assert _shape_query_response(result, debug=True) == result
+
+
+def test_shape_query_response_debug_payload_includes_evaluator_run() -> None:
+    payload = _shape_query_response(_sample_query_result(), debug=True)
+    assert "evaluator_run" in payload
+    assert payload["evaluator_run"]["verdict"] == "pass"
 
 
 def test_frontend_origins_defaults_when_env_missing(monkeypatch) -> None:
