@@ -1,7 +1,10 @@
 // loads Three.js, .glb avatar and allow zoom and rotation 
+import "./style.css";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import MarkdownIt from "markdown-it";
+import DOMPurify from "dompurify";
 
 const scene = new THREE.Scene();
 
@@ -123,64 +126,169 @@ const textInput = document.getElementById("textInput");
 const sendBtn = document.getElementById("sendBtn");
 const micBtn = document.getElementById("micBtn");
 const statusEl = document.getElementById("status");
+const DEFAULT_STATUS = "Type a question or press the microphone to speak.";
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
+).replace(/\/+$/, "");
+const QUERY_ENDPOINT = `${API_BASE_URL}/query`;
 
-function addMsg(who, text) {
-  const div = document.createElement("div");
-  div.className = `msg ${who}`;
-  div.innerHTML = `<span class="${who}">${who === "me" ? "You" : "Avatar"}:</span> ${text}`;
+let isSending = false;
+let recognition = null;
+let isListening = false;
 
-  if (who === "bot") {
-    const feedbackRow = document.createElement("div");
-    feedbackRow.className = "feedback-row";
+const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  breaks: true,
+});
 
-    const label = document.createElement("span");
-    label.className = "feedback-label";
-    label.textContent = "Was your question answered?";
+const defaultLinkOpenRule =
+  md.renderer.rules.link_open ||
+  ((tokens, idx, options, env, self) =>
+    self.renderToken(tokens, idx, options));
 
-    const yesBtn = document.createElement("button");
-    yesBtn.className = "feedback-btn feedback-yes";
-    yesBtn.textContent = "Yes";
+md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+  const token = tokens[idx];
+  token.attrSet("target", "_blank");
+  token.attrSet("rel", "noopener noreferrer");
+  return defaultLinkOpenRule(tokens, idx, options, env, self);
+};
 
-    const noBtn = document.createElement("button");
-    noBtn.className = "feedback-btn feedback-no";
-    noBtn.textContent = "No";
+function renderUserMessage(text) {
+  const content = document.createElement("div");
+  content.className = "msg-content";
+  content.textContent = text;
+  return content;
+}
 
-    function handleFeedback(answered) {
-      yesBtn.disabled = true;
-      noBtn.disabled = true;
-      feedbackRow.innerHTML = answered
-        ? `<span class="feedback-thanks">Glad we could help!</span>`
-        : `<span class="feedback-thanks">Sorry about that — we'll try to improve.</span>`;
-      console.log("Feedback:", answered ? "answered" : "not answered", "for:", text);
-      // TODO: send feedback to your backend
-      // fetch("/api/feedback", { method: "POST", body: JSON.stringify({ answer: text, resolved: answered }) });
-    }
+function renderAvatarMessage(markdownText) {
+  const content = document.createElement("div");
+  content.className = "msg-content markdown";
 
-    yesBtn.addEventListener("click", () => handleFeedback(true));
-    noBtn.addEventListener("click", () => handleFeedback(false));
+  const rawHtml = md.render(markdownText);
+  const safeHtml = DOMPurify.sanitize(rawHtml, {
+    USE_PROFILES: { html: true },
+    ADD_ATTR: ["target", "rel"],
+  });
+  content.innerHTML = safeHtml;
+  return content;
+}
 
-    feedbackRow.appendChild(label);
-    feedbackRow.appendChild(yesBtn);
-    feedbackRow.appendChild(noBtn);
-    div.appendChild(feedbackRow);
+function createFeedbackRow(text) {
+  const feedbackRow = document.createElement("div");
+  feedbackRow.className = "feedback-row";
+
+  const label = document.createElement("span");
+  label.className = "feedback-label";
+  label.textContent = "Was your question answered?";
+
+  const yesBtn = document.createElement("button");
+  yesBtn.className = "feedback-btn feedback-yes";
+  yesBtn.textContent = "Yes";
+
+  const noBtn = document.createElement("button");
+  noBtn.className = "feedback-btn feedback-no";
+  noBtn.textContent = "No";
+
+  function handleFeedback(answered) {
+    yesBtn.disabled = true;
+    noBtn.disabled = true;
+    feedbackRow.innerHTML = answered
+      ? `<span class="feedback-thanks">Glad we could help!</span>`
+      : `<span class="feedback-thanks">Sorry about that \u2014 we'll try to improve.</span>`;
+    console.log("Feedback:", answered ? "answered" : "not answered", "for:", text);
+    // TODO: send feedback to your backend
+    // fetch("/api/feedback", { method: "POST", body: JSON.stringify({ answer: text, resolved: answered }) });
   }
 
-  chatLog.appendChild(div);
+  yesBtn.addEventListener("click", () => handleFeedback(true));
+  noBtn.addEventListener("click", () => handleFeedback(false));
+
+  feedbackRow.appendChild(label);
+  feedbackRow.appendChild(yesBtn);
+  feedbackRow.appendChild(noBtn);
+  return feedbackRow;
+}
+
+function appendMessage(role, text) {
+  const message = document.createElement("article");
+  message.className = `msg ${role}`;
+
+  const label = document.createElement("div");
+  label.className = "msg-label";
+  label.textContent = role === "me" ? "You" : "Avatar";
+  message.appendChild(label);
+
+  const content =
+    role === "bot" ? renderAvatarMessage(text) : renderUserMessage(text);
+  message.appendChild(content);
+
+  if (role === "bot") {
+    message.appendChild(createFeedbackRow(text));
+  }
+
+  chatLog.appendChild(message);
   chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function setRequestState(pending) {
+  isSending = pending;
+  sendBtn.disabled = pending;
 }
 
 async function handleSend(questionText) {
   const q = (questionText ?? textInput.value).trim();
-  if (!q) return;
+  if (!q) {
+    return;
+  }
+  if (isSending) {
+    statusEl.textContent = "Please wait for the current answer.";
+    return;
+  }
 
-  addMsg("me", q);
+  appendMessage("me", q);
   textInput.value = "";
+  setRequestState(true);
+  statusEl.textContent = "Avatar is thinking...";
 
-  // dummy response 
-  const answer = `You asked: "${q}". (Next: connect to backend.)`;
-  addMsg("bot", answer);
+  try {
+    const response = await fetch(QUERY_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: q }),
+    });
 
-  // trigger TTS + speaking animation here
+    const contentType = response.headers.get("content-type") || "";
+    const payload = contentType.includes("application/json")
+      ? await response.json()
+      : null;
+
+    if (!response.ok) {
+      const detail =
+        payload && typeof payload === "object" && payload.detail
+          ? String(payload.detail)
+          : `Request failed with status ${response.status}`;
+      throw new Error(detail);
+    }
+
+    const answer =
+      payload && typeof payload.answer === "string" && payload.answer.trim()
+        ? payload.answer.trim()
+        : "I could not generate an answer from the backend.";
+    appendMessage("bot", answer);
+    statusEl.textContent = "Answer received. Ask another question any time.";
+  } catch (error) {
+    console.error("Chat request failed:", error);
+    appendMessage(
+      "bot",
+      "Sorry, I could not reach the backend just now. Please try again."
+    );
+    const detail =
+      error instanceof Error ? error.message : "Unknown network error.";
+    statusEl.textContent = `Error: ${detail}`;
+  } finally {
+    setRequestState(false);
+  }
 }
 
 sendBtn.addEventListener("click", () => handleSend());
@@ -188,13 +296,10 @@ textInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") handleSend();
 });
 
-statusEl.textContent = "Type a question or press the microphone to speak.";
+statusEl.textContent = DEFAULT_STATUS;
 
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
-
-let recognition = null;
-let isListening = false;
 
 if (SpeechRecognition) {
   recognition = new SpeechRecognition();
@@ -226,12 +331,17 @@ if (SpeechRecognition) {
     micBtn.textContent = "🎤";
     // Don’t overwrite error messages; only reset if currently "Listening"
     if (statusEl.textContent.startsWith("Listening")) {
-      statusEl.textContent = "Type a question or press 🎤 to speak.";
+      statusEl.textContent = DEFAULT_STATUS;
     }
   };
 
   micBtn.addEventListener("click", () => {
     if (!recognition) return;
+    if (isSending) {
+      statusEl.textContent =
+        "Please wait for the current answer before recording another question.";
+      return;
+    }
     if (isListening) {
       recognition.stop();
     } else {

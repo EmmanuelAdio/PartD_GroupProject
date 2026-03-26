@@ -1,0 +1,51 @@
+{
+  "source_url": "https://www.lboro.ac.uk/services/finance/students/pay-fees/faqs/",
+  "scraped_at": "2026-02-22T18:18:29.391481+00:00",
+  "sections": [
+    {
+      "section_title": "Frequently asked questions",
+      "faqs": [
+        {
+          "question": "Why can’t I make a direct bank transfer?",
+          "answer": "We do not offer payment by traditional, direct bank transfer as it is slow, offers poor security, and can attract significant fees. This, together with difficulties we have in allocating payments makes for a poor payment experience, and often significant stress for students when paying. Payment by secure, tracked bank transfer through Flywire is available for international payers through the portal above, both in local currency or GBP. We are working with Flywire to extend this service to UK payers and expect to be able to offer this in the near future."
+        },
+        {
+          "question": "What happens if I need a refund?",
+          "answer": "If we need to return any funds to you, they will be returned to the card or account used to make the payment."
+        },
+        {
+          "question": "What support is there for specific issues related to paying from my country?",
+          "answer": "The Flywire website has a section dedicated to the requirements and options for making payment from a number of countries, and details of how to contact them with country specific questions."
+        },
+        {
+          "question": "I'm paying from Nigeria - can I pay through Flywire and still benefit from the Form A rates?",
+          "answer": "Yes - you can find a step-by-step guide (https://www.lboro.ac.uk/services/finance/students/pay-fees/faqs/paying-from-nigeria/) on our website. If you have any questions about this process, you can also consult the country specific query page for Nigeria on the Flywire website."
+        },
+        {
+          "question": "I can't select the country I'm paying from - what do I do?",
+          "answer": "Please contact the Accounts Receivable team, who will be able to provide advice on how we can process your payment."
+        },
+        {
+          "question": "I can get a better exchange rate than I’m being offered by Flywire",
+          "answer": "Flywire aims to provide the best price for international payments. If you find a better rate at your bank within two hours of booking a local currency bank transfer payment Flywire will match it. You can find more details including terms and conditions on the Flywire website. Note – please ensure when comparing exchange rates you compare rates that are achievable i.e. rates like XE.com are market rates that are not generally available to individuals."
+        },
+        {
+          "question": "Why is the cost different for each international payment method?",
+          "answer": "Whilst Loughborough University does not charge any payment fees, moving money around the world is expensive and some card issuers and schemes charge significant processing fees. Whilst these are often hidden, paying through the portal allows certainty of the total cost you will pay before you make the payment. To minimise processing fees, international payers should make payment by indirect bank transfer, via Flywire."
+        },
+        {
+          "question": "I’m an international payer and I want to pay in GBP rather than my local currency",
+          "answer": "That’s fine – you can do this by selecting “International Bank Transfer in British Pounds (GBP)” from the payment options when paying. There is a small fee for paying in this way (£18), which allows you to benefit from the security, tracking and support of paying through Flywire. There is no transaction fee for paying in local currency."
+        },
+        {
+          "question": "How do I get support for a Flywire payment?",
+          "answer": "Flywire offers around-the-clock multilingual support via live chat, email or phone. Please visit the Flywire Help Pages for more information and contact details."
+        },
+        {
+          "question": "I don't want to pay through Flywire - what options do I have?",
+          "answer": "If you are paying from overseas and don't want to pay via Flywire you can transfer the funds to an account in your name in the UK and then make a debit/credit card payment."
+        }
+      ]
+    }
+  ]
+}

@@ -36,10 +36,10 @@ class LLMService:
                 "The 'openai' package is not installed. Install it with: pip install openai"
             )
 
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_API_KEY")
         if not self.api_key:
             raise ValueError(
-                "OPENAI_API_KEY is not set. Add it to your environment before using LLMService."
+                "OPENAI_API_KEY (or OPEN_API_KEY) is not set. Add it to your environment before using LLMService."
             )
 
         self.client = OpenAI(api_key=self.api_key)

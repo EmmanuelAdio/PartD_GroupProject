@@ -5,10 +5,14 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from agents.answerer_agent import AnswererAgent
+from agents.processor_agent import ProcessorAgent
+from schemas.models import EvidenceItem, RetrievalQuery
 from services.embedding_service import DeterministicEmbeddingService, EmbeddingService
 from services.ingestion_service import IngestionService
 from services.llm_services import LLMService
 from services.mongo_repo import MongoRepo
+from services.retriever_service import RetrieverService
 
 
 class IngestionOrchestrator:
@@ -234,6 +238,217 @@ class IngestionOrchestrator:
     def _stable_hash_json(obj: Dict[str, Any]) -> str:
         raw = json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()
+
+
+class QueryOrchestrator:
+    """Wraps ProcessorAgent + RetrieverService with progressive fallback on zero results.
+
+    Fallback levels:
+      1. Full plan (domain filter + planned query_text)
+      2. Relax domain — remove the hard domain filter, keep planned query_text
+      3. Bare query — raw user input, no filters at all
+    """
+
+    def __init__(
+        self,
+        mongo_db: str = "open_day_knowledge",
+        mongo_collection: str = "kb_chuncks",
+        embedder_backend: str = "openai",
+        embedding_model: str = "text-embedding-3-small",
+        processor_model: str = "gpt-4o-mini",
+        answerer_model: str = "gpt-4o-mini",
+        vector_index_name: str = "kb_vector_index",
+        atlas_search_index_name: str = "kb_text_index",
+    ) -> None:
+        self._mongo_db = mongo_db
+        self._mongo_collection = mongo_collection
+
+        self.repo = MongoRepo(db_name=mongo_db, collection_name=mongo_collection)
+        self.embedder = self._build_embedder(embedder_backend, embedding_model)
+        self.processor = ProcessorAgent(llm_model=processor_model)
+        self.answerer = AnswererAgent(llm_model=answerer_model)
+        self.retriever = RetrieverService(
+            repo=self.repo,
+            embedder=self.embedder,
+            vector_index_name=vector_index_name,
+            atlas_search_index_name=atlas_search_index_name,
+        )
+
+    def run(self, user_query: str, top_k_override: Optional[int] = None) -> Dict[str, Any]:
+        """Plan, retrieve with fallback, return structured response."""
+        mongo_status = self._get_mongo_status()
+        index_health = self._get_index_health()
+
+        plan = self.processor.process(user_query)
+        if top_k_override is not None:
+            plan = plan.model_copy(update={"top_k": int(top_k_override)})
+
+        attempts_log: List[Dict[str, Any]] = []
+
+        # Attempt 1: full plan
+        results, diag = self._retrieve(plan)
+        attempts_log.append({"attempt": 1, "description": "full_plan", "hits": len(results)})
+
+        # Attempt 2: drop domain filter
+        if not results:
+            relaxed = plan.model_copy(update={"domain": None, "domains": []})
+            results, diag = self._retrieve(relaxed)
+            attempts_log.append({"attempt": 2, "description": "relax_domain", "hits": len(results)})
+
+        # Attempt 3: bare raw query, no filters
+        if not results:
+            bare = RetrievalQuery(query_text=user_query, top_k=plan.top_k)
+            results, diag = self._retrieve(bare)
+            attempts_log.append({"attempt": 3, "description": "bare_query", "hits": len(results)})
+
+        retrieved_result_count = len(results)
+        results = self._prepare_answer_evidence(
+            user_query=user_query,
+            plan=plan,
+            evidence=results,
+        )
+        diag = dict(diag or {})
+        diag["answer_evidence_expanded"] = len(results) > retrieved_result_count
+        diag["answer_evidence_count"] = len(results)
+
+        attempt_used = next((a["attempt"] for a in attempts_log if a["hits"] > 0), None)
+        answer_result = self.answerer.answer(
+            user_query=user_query,
+            evidence_items=results,
+            processor_plan=plan,
+        )
+
+        return {
+            "user_query": user_query,
+            "mongo_status": mongo_status,
+            "index_health": index_health,
+            "processor_plan": plan.model_dump(),
+            "answerer_run": answer_result.model_dump(),
+            "retrieval_run": {
+                "attempt_used": attempt_used,
+                "attempts_log": attempts_log,
+                "result_count": len(results),
+                "retrieved_result_count": retrieved_result_count,
+                "diagnostics": diag,
+                "evidence": [item.model_dump() for item in results],
+            },
+        }
+
+    def get_status(self) -> Dict[str, Any]:
+        """Lightweight status check — no LLM or retrieval calls."""
+        return {
+            "mongo_status": self._get_mongo_status(),
+            "index_health": self._get_index_health(),
+        }
+
+    def _retrieve(self, plan: RetrievalQuery):
+        results = self.retriever.retrieve(plan)
+        diag = self.retriever.get_last_query_diagnostics()
+        return results, diag
+
+    def _prepare_answer_evidence(
+        self,
+        *,
+        user_query: str,
+        plan: RetrievalQuery,
+        evidence: List[EvidenceItem],
+    ) -> List[EvidenceItem]:
+        if not self._should_expand_accommodation_price_evidence(user_query, plan):
+            return evidence
+
+        expanded_docs = self.repo.collection.find(
+            {
+                "source_id": "accommodation_halls",
+                "domain": "accommodation",
+            },
+            {
+                "_id": 0,
+                "chunk_id": 1,
+                "source_id": 1,
+                "source_type": 1,
+                "title": 1,
+                "url": 1,
+                "text": 1,
+                "domain": 1,
+                "entity_tags": 1,
+                "section": 1,
+                "order": 1,
+                "version": 1,
+                "metadata": 1,
+            },
+        ).sort("order", 1)
+
+        merged: List[EvidenceItem] = []
+        seen = set()
+
+        for item in evidence:
+            if item.chunk_id in seen:
+                continue
+            seen.add(item.chunk_id)
+            merged.append(item)
+
+        for doc in expanded_docs:
+            try:
+                item = EvidenceItem.model_validate(
+                    {
+                        **doc,
+                        "score": 0.0,
+                        "vector_score": None,
+                        "text_score": None,
+                        "retrieval_channels": [],
+                    }
+                )
+            except Exception:
+                continue
+            if item.chunk_id in seen:
+                continue
+            seen.add(item.chunk_id)
+            merged.append(item)
+
+        return merged
+
+    @staticmethod
+    def _should_expand_accommodation_price_evidence(user_query: str, plan: RetrievalQuery) -> bool:
+        query_lc = (user_query or "").lower()
+        plan_domains = {str(v).lower() for v in [plan.domain, *(plan.domains or [])] if v}
+        is_accommodation = "accommodation" in plan_domains or "accommodation" in query_lc or "hall" in query_lc
+        has_extreme = any(
+            token in query_lc
+            for token in ("cheapest", "lowest", "least expensive", "minimum", "most expensive", "highest", "maximum", "priciest")
+        )
+        has_price_signal = any(
+            token in query_lc
+            for token in ("price", "prices", "cost", "costs", "fee", "fees", "rent", "weekly", "per week")
+        )
+        return is_accommodation and has_extreme and has_price_signal
+
+    def _get_mongo_status(self) -> Dict[str, Any]:
+        doc_count = self.repo.collection.count_documents({})
+        return {
+            "database": self._mongo_db,
+            "collection": self._mongo_collection,
+            "total_chunk_docs": doc_count,
+        }
+
+    def _get_index_health(self) -> Dict[str, Any]:
+        r = self.retriever.check_index_health()
+        return {
+            "healthy": r.is_healthy,
+            "vector_index_found": r.vector_index_found,
+            "vector_index_status": r.vector_index_status,
+            "vector_index_dimensions": r.vector_index_dimensions,
+            "text_index_found": r.text_index_found,
+            "text_index_status": r.text_index_status,
+            "errors": r.errors,
+        }
+
+    @staticmethod
+    def _build_embedder(embedder_backend: str, embedding_model: str):
+        if embedder_backend == "fake":
+            return DeterministicEmbeddingService(dim=64)
+        if embedder_backend == "openai":
+            return EmbeddingService(model=embedding_model)
+        raise ValueError("embedder_backend must be 'fake' or 'openai'.")
 
 
 # Backward-compatible alias for existing imports.
