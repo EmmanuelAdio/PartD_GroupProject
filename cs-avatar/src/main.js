@@ -91,7 +91,13 @@ loader.load(
     controls.minDistance = cameraZ * 0.3;
     controls.maxDistance = cameraZ * 3;
 
-    // animation controls 
+    // debug: log bones and morph targets
+    avatar.traverse((child) => {
+      if (child.isBone) console.log("Bone:", child.name);
+      if (child.isMesh && child.morphTargetInfluences) console.log("Morph targets:", child.name, Object.keys(child.morphTargetDictionary || {}));
+    });
+
+    // animation controls
     if (gltf.animations && gltf.animations.length > 0) {
       mixer = new THREE.AnimationMixer(avatar);
       const action = mixer.clipAction(gltf.animations[0]);
@@ -210,6 +216,29 @@ function createFeedbackRow(text) {
   return feedbackRow;
 }
 
+let cachedVoice = null;
+function loadPreferredVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  cachedVoice = voices.find(v => v.name === "Microsoft George - English (United Kingdom)") || null;
+}
+if (window.speechSynthesis) {
+  loadPreferredVoice();
+  window.speechSynthesis.addEventListener("voiceschanged", loadPreferredVoice);
+}
+
+function speakText(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const plain = text.replace(/[#*_`~\[\]()>|\\-]/g, "").replace(/\n+/g, " ").trim();
+  if (!plain) return;
+  const utterance = new SpeechSynthesisUtterance(plain);
+  utterance.lang = "en-GB";
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  if (cachedVoice) utterance.voice = cachedVoice;
+  window.speechSynthesis.speak(utterance);
+}
+
 function appendMessage(role, text) {
   const message = document.createElement("article");
   message.className = `msg ${role}`;
@@ -276,6 +305,7 @@ async function handleSend(questionText) {
         ? payload.answer.trim()
         : "I could not generate an answer from the backend.";
     appendMessage("bot", answer);
+    speakText(answer);
     statusEl.textContent = "Answer received. Ask another question any time.";
   } catch (error) {
     console.error("Chat request failed:", error);
