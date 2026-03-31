@@ -53,14 +53,17 @@ scene.add(dirLight);
 // load avatar 
 const loader = new GLTFLoader();
 let mixer = null;
+let mouthMesh = null;
+let mouthOpenIndex = -1;
+let isSpeaking = false;
 
 loader.load(
-  "/male2.glb",
+  "/male_mouth_animation.glb",
   (gltf) => {
     const avatar = gltf.scene;
     scene.add(avatar);
 
-    // autot-center and auto-frame 
+    // autot-center and auto-frame
     const box = new THREE.Box3().setFromObject(avatar);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
@@ -91,10 +94,13 @@ loader.load(
     controls.minDistance = cameraZ * 0.3;
     controls.maxDistance = cameraZ * 3;
 
-    // debug: log bones and morph targets
+    // find the morph target for mouth animation
     avatar.traverse((child) => {
-      if (child.isBone) console.log("Bone:", child.name);
-      if (child.isMesh && child.morphTargetInfluences) console.log("Morph targets:", child.name, Object.keys(child.morphTargetDictionary || {}));
+      if (child.isMesh && child.morphTargetDictionary && "mouthOpen" in child.morphTargetDictionary) {
+        mouthMesh = child;
+        mouthOpenIndex = child.morphTargetDictionary["mouthOpen"];
+        console.log("Found mouthOpen morph target on:", child.name, "at index:", mouthOpenIndex);
+      }
     });
 
     // animation controls
@@ -112,10 +118,23 @@ loader.load(
 );
 
 const clock = new THREE.Clock();
+let mouthTime = 0;
 function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
   if (mixer) mixer.update(dt);
+
+  // animate mouth while speaking
+  if (mouthMesh && mouthOpenIndex >= 0) {
+    if (isSpeaking) {
+      mouthTime += dt * 12;
+      const value = (Math.sin(mouthTime) * 0.5 + 0.5) * 0.7;
+      mouthMesh.morphTargetInfluences[mouthOpenIndex] = value;
+    } else {
+      mouthMesh.morphTargetInfluences[mouthOpenIndex] *= 0.85;
+    }
+  }
+
   controls.update();
   renderer.render(scene, camera);
 }
@@ -236,6 +255,9 @@ function speakText(text) {
   utterance.rate = 1;
   utterance.pitch = 1;
   if (cachedVoice) utterance.voice = cachedVoice;
+  utterance.onstart = () => { isSpeaking = true; };
+  utterance.onend = () => { isSpeaking = false; };
+  utterance.onerror = () => { isSpeaking = false; };
   window.speechSynthesis.speak(utterance);
 }
 
