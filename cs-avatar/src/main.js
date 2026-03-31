@@ -251,27 +251,11 @@ function createFeedbackRow(text) {
 let cachedVoice = null;
 function loadPreferredVoice() {
   const voices = window.speechSynthesis.getVoices();
-  // prefer natural/neural voices (Edge), fall back to standard
-  const preferred = [
-    "Microsoft Ryan Online (Natural) - English (United Kingdom)",
-    "Microsoft Thomas Online (Natural) - English (United Kingdom)",
-    "Microsoft Sonia Online (Natural) - English (United Kingdom)",
-    "Microsoft Libby Online (Natural) - English (United Kingdom)",
-    "Microsoft Maisie Online (Natural) - English (United Kingdom)",
-    "Google UK English Male",
-    "Microsoft George - English (United Kingdom)",
-  ];
-  cachedVoice = null;
-  for (const name of preferred) {
-    cachedVoice = voices.find(v => v.name === name);
-    if (cachedVoice) break;
-  }
-  console.log("Selected voice:", cachedVoice?.name || "browser default");
+  cachedVoice = voices.find(v => v.name === "Microsoft George - English (United Kingdom)") || null;
 }
 if (window.speechSynthesis) {
   loadPreferredVoice();
   window.speechSynthesis.addEventListener("voiceschanged", loadPreferredVoice);
-  window.addEventListener("beforeunload", () => window.speechSynthesis.cancel());
 }
 
 function speakText(text) {
@@ -279,23 +263,15 @@ function speakText(text) {
   window.speechSynthesis.cancel();
   const plain = text.replace(/[#*_`~\[\]()>|\\-]/g, "").replace(/\n+/g, " ").trim();
   if (!plain) return;
-  // split into sentences for faster first-word playback
-  const sentences = plain.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [plain];
-  sentences.forEach((sentence, i) => {
-    const trimmed = sentence.trim();
-    if (!trimmed) return;
-    const utterance = new SpeechSynthesisUtterance(trimmed);
-    utterance.lang = "en-GB";
-    utterance.rate = 1;
-    utterance.pitch = 1;
-    if (cachedVoice) utterance.voice = cachedVoice;
-    if (i === 0) utterance.onstart = () => { isSpeaking = true; };
-    if (i === sentences.length - 1) {
-      utterance.onend = () => { isSpeaking = false; };
-      utterance.onerror = () => { isSpeaking = false; };
-    }
-    window.speechSynthesis.speak(utterance);
-  });
+  const utterance = new SpeechSynthesisUtterance(plain);
+  utterance.lang = "en-GB";
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  if (cachedVoice) utterance.voice = cachedVoice;
+  utterance.onstart = () => { isSpeaking = true; };
+  utterance.onend = () => { isSpeaking = false; };
+  utterance.onerror = () => { isSpeaking = false; };
+  window.speechSynthesis.speak(utterance);
 }
 
 function appendMessage(role, text) {
