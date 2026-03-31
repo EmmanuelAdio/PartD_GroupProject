@@ -251,7 +251,7 @@ function createFeedbackRow(text) {
 let cachedVoice = null;
 function loadPreferredVoice() {
   const voices = window.speechSynthesis.getVoices();
-  cachedVoice = voices.find(v => v.name === "Microsoft George - English (United Kingdom)") || null;
+  cachedVoice = voices.find(v => v.name === "Google UK English Male") || null;
 }
 if (window.speechSynthesis) {
   loadPreferredVoice();
