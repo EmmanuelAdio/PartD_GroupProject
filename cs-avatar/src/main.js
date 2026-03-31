@@ -119,19 +119,32 @@ loader.load(
 
 const clock = new THREE.Clock();
 let mouthTime = 0;
+let mouthTarget = 0;
+let mouthCurrent = 0;
+let nextChangeTime = 0;
 function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
   if (mixer) mixer.update(dt);
 
-  // animate mouth while speaking
+  // animate mouth while speaking — varied rhythm for natural look
   if (mouthMesh && mouthOpenIndex >= 0) {
     if (isSpeaking) {
-      mouthTime += dt * 12;
-      const value = (Math.sin(mouthTime) * 0.5 + 0.5) * 0.7;
-      mouthMesh.morphTargetInfluences[mouthOpenIndex] = value;
+      mouthTime += dt;
+      if (mouthTime >= nextChangeTime) {
+        // randomly pick a new mouth openness target
+        const isSilentGap = Math.random() < 0.15;
+        mouthTarget = isSilentGap ? 0.05 : 0.15 + Math.random() * 0.55;
+        // vary how long each position holds (fast syllables + brief pauses)
+        nextChangeTime = mouthTime + 0.06 + Math.random() * 0.12;
+      }
+      // smooth interpolation toward target
+      mouthCurrent += (mouthTarget - mouthCurrent) * Math.min(1, dt * 18);
+      mouthMesh.morphTargetInfluences[mouthOpenIndex] = mouthCurrent;
     } else {
-      mouthMesh.morphTargetInfluences[mouthOpenIndex] *= 0.85;
+      mouthCurrent *= 0.85;
+      mouthTarget = 0;
+      mouthMesh.morphTargetInfluences[mouthOpenIndex] = mouthCurrent;
     }
   }
 
