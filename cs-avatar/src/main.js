@@ -84,9 +84,9 @@ loader.load(
     const maxDim = Math.max(size2.x, size2.y, size2.z);
     const fov = camera.fov * (Math.PI / 180);
     let cameraZ = Math.abs((maxDim / 2) / Math.tan(fov / 2));
-    cameraZ *= 1.5;
+    cameraZ *= 1.1;
 
-    camera.position.set(center2.x, center2.y + maxDim * 0.2, center2.z + cameraZ);
+    camera.position.set(center2.x, center2.y + maxDim * 0.35, center2.z + cameraZ);
     camera.near = cameraZ / 100;
     camera.far = cameraZ * 100;
     camera.updateProjectionMatrix();
@@ -112,6 +112,30 @@ loader.load(
     } else {
       console.log("No animations found in GLB.");
     }
+
+    // show intro text immediately; speak on first interaction (Chrome autoplay policy)
+    const intro = "Hi, welcome to Loughborough University's Open Day! I'm your virtual assistant, here to help answer any questions you might have about our courses, campus, student life, or anything else. Feel free to type or speak your question to get started.";
+    appendMessage("bot", intro);
+    micBtn.disabled = true;
+    micBtn.title = "Please wait for the introduction to finish.";
+    let introSpoken = false;
+    function speakIntroOnce() {
+      if (introSpoken) return;
+      introSpoken = true;
+      document.removeEventListener("click", speakIntroOnce);
+      document.removeEventListener("keydown", speakIntroOnce);
+      const introUtterance = new SpeechSynthesisUtterance(intro.replace(/[#*_`~\[\]()>|\\-]/g, "").replace(/\n+/g, " ").trim());
+      introUtterance.lang = "en-GB";
+      introUtterance.rate = 1;
+      introUtterance.pitch = 1;
+      if (cachedVoice) introUtterance.voice = cachedVoice;
+      introUtterance.onstart = () => { isSpeaking = true; };
+      introUtterance.onend = () => { isSpeaking = false; micBtn.disabled = false; micBtn.title = ""; };
+      introUtterance.onerror = () => { isSpeaking = false; micBtn.disabled = false; micBtn.title = ""; };
+      window.speechSynthesis.speak(introUtterance);
+    }
+    document.addEventListener("click", speakIntroOnce);
+    document.addEventListener("keydown", speakIntroOnce);
   },
   undefined,
   (err) => console.error("GLB load error:", err)
@@ -173,6 +197,60 @@ const QUERY_ENDPOINT = `${API_BASE_URL}/query`;
 let isSending = false;
 let recognition = null;
 let isListening = false;
+let pendingEditElements = null;
+let lastQuestion = "";
+let lastAnswer = "";
+
+const CANNED_RESPONSES = [
+  {
+    patterns: [/^thank(s| you)/i, /^cheers/i],
+    reply: "You're welcome! I hope I was able to help. Feel free to ask if you have any more questions."
+  },
+  {
+    patterns: [/^hello/i, /^hi\b/i, /^hey\b/i, /^good (morning|afternoon|evening)/i],
+    reply: "Hello! I'm the Loughborough University virtual assistant. How can I help you today?"
+  },
+  {
+    patterns: [/^bye/i, /^goodbye/i, /^see you/i],
+    reply: "Goodbye! I hope I was helpful. Feel free to come back if you have more questions about Loughborough University."
+  },
+  {
+    patterns: [/^who are you/i, /^what are you/i],
+    reply: "I'm a virtual assistant for Loughborough University, here to help answer questions about courses, open days, entry requirements, and student life."
+  },
+  {
+    patterns: [/^what can you (help|do)/i, /^what do you know/i, /^what can (i|you) ask/i],
+    reply: "I can answer questions about Loughborough University courses, entry requirements, open days, student life, campus facilities, and much more. Go ahead and ask!"
+  },
+  {
+    patterns: [/^(that'?s?|it'?s?) (helpful|great|brilliant|perfect|amazing|awesome)/i, /^great answer/i],
+    reply: "Glad I could help! Let me know if you have any more questions."
+  },
+  {
+    patterns: [/^(can you )?repeat that/i, /^say that again/i, /^pardon/i],
+    reply: () => lastAnswer || "I'm sorry, I don't have a previous answer to repeat."
+  },
+  {
+    patterns: [/^(i don'?t understand|can you explain|i'?m? confused)/i],
+    reply: "I'm sorry if that wasn't clear. Could you rephrase your question and I'll try to give a better answer."
+  },
+];
+
+function checkCannedResponse(q) {
+  for (const { patterns, reply } of CANNED_RESPONSES) {
+    if (patterns.some(p => p.test(q.trim()))) {
+      return typeof reply === "function" ? reply() : reply;
+    }
+  }
+  return null;
+}
+
+function buildQuery(q) {
+  if (/^(what about|and what about|how about|tell me more|more about|can you elaborate|what else)/i.test(q.trim()) && lastQuestion) {
+    return `${q} (in relation to: ${lastQuestion})`;
+  }
+  return q;
+}
 
 const md = new MarkdownIt({
   html: false,
@@ -249,6 +327,7 @@ function createFeedbackRow(text) {
 }
 
 let cachedVoice = null;
+let voiceReady = false;
 function loadPreferredVoice() {
   const voices = window.speechSynthesis.getVoices();
   cachedVoice = voices.find(v => v.name === "Google UK English Male") || null;
@@ -256,11 +335,16 @@ function loadPreferredVoice() {
 if (window.speechSynthesis) {
   loadPreferredVoice();
   window.speechSynthesis.addEventListener("voiceschanged", loadPreferredVoice);
+  window.addEventListener("beforeunload", () => window.speechSynthesis.cancel());
+  // warm up the speech engine immediately to avoid delay on first utterance
+  const warmup = new SpeechSynthesisUtterance(" ");
+  warmup.volume = 0;
+  warmup.onend = () => { voiceReady = true; };
+  window.speechSynthesis.speak(warmup);
 }
-
 function speakText(text) {
   if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
+  if (voiceReady) window.speechSynthesis.cancel();
   const plain = text.replace(/[#*_`~\[\]()>|\\-]/g, "").replace(/\n+/g, " ").trim();
   if (!plain) return;
   const utterance = new SpeechSynthesisUtterance(plain);
@@ -274,7 +358,7 @@ function speakText(text) {
   window.speechSynthesis.speak(utterance);
 }
 
-function appendMessage(role, text) {
+function appendMessage(role, text, fromVoice = false) {
   const message = document.createElement("article");
   message.className = `msg ${role}`;
 
@@ -286,6 +370,21 @@ function appendMessage(role, text) {
   const content =
     role === "bot" ? renderAvatarMessage(text) : renderUserMessage(text);
   message.appendChild(content);
+
+  if (role === "me" && fromVoice) {
+    const editBtn = document.createElement("button");
+    editBtn.className = "edit-btn";
+    editBtn.textContent = "✏️ Edit";
+    editBtn.title = "Transcription wrong? Edit and resubmit.";
+    editBtn.addEventListener("click", () => {
+      // store this message + the bot response that follows for removal on resubmit
+      pendingEditElements = [message, message.nextElementSibling];
+      textInput.value = text;
+      textInput.focus();
+      statusEl.textContent = "Edit your question and press Send or Enter.";
+    });
+    message.appendChild(editBtn);
+  }
 
   if (role === "bot") {
     message.appendChild(createFeedbackRow(text));
@@ -300,7 +399,7 @@ function setRequestState(pending) {
   sendBtn.disabled = pending;
 }
 
-async function handleSend(questionText) {
+async function handleSend(questionText, fromVoice = false) {
   const q = (questionText ?? textInput.value).trim();
   if (!q) {
     return;
@@ -310,16 +409,37 @@ async function handleSend(questionText) {
     return;
   }
 
-  appendMessage("me", q);
+  // remove original voice message + its bot response if user edited and resubmitted
+  if (pendingEditElements) {
+    pendingEditElements.forEach(el => el?.remove());
+    pendingEditElements = null;
+  }
+
+  appendMessage("me", q, fromVoice);
   textInput.value = "";
+
+  // check for canned responses first
+  const canned = checkCannedResponse(q);
+  if (canned) {
+    appendMessage("bot", canned);
+    speakText(canned);
+    lastAnswer = canned;
+    statusEl.textContent = "Answer received. Ask another question any time.";
+    setRequestState(false);
+    return;
+  }
+
   setRequestState(true);
   statusEl.textContent = "Avatar is thinking...";
+
+  const queryToSend = buildQuery(q);
+  lastQuestion = q;
 
   try {
     const response = await fetch(QUERY_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: q }),
+      body: JSON.stringify({ query: queryToSend }),
     });
 
     const contentType = response.headers.get("content-type") || "";
@@ -339,6 +459,7 @@ async function handleSend(questionText) {
       payload && typeof payload.answer === "string" && payload.answer.trim()
         ? payload.answer.trim()
         : "I could not generate an answer from the backend.";
+    lastAnswer = answer;
     appendMessage("bot", answer);
     speakText(answer);
     statusEl.textContent = "Answer received. Ask another question any time.";
@@ -401,7 +522,7 @@ if (SpeechRecognition) {
     const transcript = textInput.value.trim();
     if (transcript) {
       statusEl.textContent = `Heard: "${transcript}"`;
-      handleSend(transcript);
+      handleSend(transcript, true);
     } else if (!statusEl.textContent.startsWith("Mic error") && !statusEl.textContent.startsWith("No speech")) {
       statusEl.textContent = DEFAULT_STATUS;
     }
