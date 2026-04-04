@@ -164,7 +164,7 @@ canvas {
   flex-direction: row;
   align-items: center;
   pointer-events: none;
-  z-index: 5;
+  z-index: 20;
 }
 
 #avatar-thinking.visible {
@@ -259,13 +259,14 @@ canvas {
 
 #controls {
   display: grid;
-  grid-template-columns: 46px 1fr 84px;
+  grid-template-columns: 46px 1fr 84px auto;
   gap: 8px;
 }
 
 #textInput,
 #micBtn,
-#sendBtn {
+#sendBtn,
+#newConvBtn {
   border-radius: 11px;
   border: 1px solid var(--control-border);
   font-family: inherit;
@@ -284,7 +285,8 @@ canvas {
 }
 
 #micBtn,
-#sendBtn {
+#sendBtn,
+#newConvBtn {
   background: rgba(255, 255, 255, 0.93);
   color: #1a2535;
   cursor: pointer;
@@ -292,7 +294,8 @@ canvas {
 }
 
 #micBtn:hover,
-#sendBtn:hover {
+#sendBtn:hover,
+#newConvBtn:hover {
   background: rgba(255, 255, 255, 1);
   border-color: rgba(15, 36, 66, 0.34);
 }

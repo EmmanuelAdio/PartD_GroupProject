@@ -85,7 +85,7 @@ function setupCamera(box) {
   controls.target.copy(center);
   controls.update();
 
-  avatarHeadPosition = new THREE.Vector3(center.x, box.max.y * 1.1, center.z);
+  avatarHeadPosition = new THREE.Vector3(center.x, box.max.y * 0.88, center.z);
 
   const maxDim  = Math.max(size.x, size.y, size.z);
   const fov     = camera.fov * (Math.PI / 180);
@@ -116,29 +116,7 @@ loader.load("/male2.glb", (gltf) => {
   }
 
   // Show intro; speak on first interaction (Chrome autoplay policy)
-  const intro = "Hi, welcome to Loughborough University's Open Day! I'm your virtual assistant, here to help answer any questions you might have about our courses, campus, student life, or anything else. Feel free to type or speak your question to get started.";
-  appendMessage("bot", intro);
-  micBtn.disabled = true;
-  micBtn.title = "Please wait for the introduction to finish.";
-  let introSpoken = false;
-  function speakIntroOnce() {
-    if (introSpoken) return;
-    introSpoken = true;
-    document.removeEventListener("click", speakIntroOnce);
-    document.removeEventListener("keydown", speakIntroOnce);
-    const introUtterance = new SpeechSynthesisUtterance(intro.replace(/[#*_`~\[\]()>|\\-]/g, "").replace(/\n+/g, " ").trim());
-    introUtterance.lang = "en-GB";
-    introUtterance.rate = 1;
-    introUtterance.pitch = 1;
-    if (cachedVoice) introUtterance.voice = cachedVoice;
-    introUtterance.onend   = () => { isSpeaking = false; setAvatarState('idle'); micBtn.disabled = false; micBtn.title = ""; };
-    introUtterance.onerror = () => { isSpeaking = false; setAvatarState('idle'); micBtn.disabled = false; micBtn.title = ""; };
-    isSpeaking = true;
-    setAvatarState('talking');
-    window.speechSynthesis.speak(introUtterance);
-  }
-  document.addEventListener("click", speakIntroOnce);
-  document.addEventListener("keydown", speakIntroOnce);
+  playIntro(true);
 }, undefined, (err) => console.error("idle GLB load error:", err));
 
 // Load talking avatar in parallel — hides itself until needed
@@ -354,11 +332,10 @@ function createFeedbackRow(text) {
 let cachedVoice = null;
 function loadPreferredVoice() {
   const voices = window.speechSynthesis.getVoices();
-  // Prefer local voices — they start instantly vs network voices which require a server round-trip
   cachedVoice =
+    voices.find(v => v.name === "Google UK English Male") ||
     voices.find(v => v.localService && v.lang === "en-GB") ||
     voices.find(v => v.localService && v.lang.startsWith("en")) ||
-    voices.find(v => v.name === "Google UK English Male") ||
     null;
   console.log("Selected voice:", cachedVoice?.name, "| local:", cachedVoice?.localService);
 }
@@ -367,29 +344,42 @@ if (window.speechSynthesis) {
   window.speechSynthesis.addEventListener("voiceschanged", loadPreferredVoice);
   window.addEventListener("beforeunload", () => window.speechSynthesis.cancel());
 }
+let speechSessionId = 0; // incremented on each new speakText call to invalidate stale callbacks
+
 function speakText(text) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const plain = text.replace(/[#*_`~\[\]()>|\\-]/g, "").replace(/\n+/g, " ").trim();
   if (!plain) return;
 
+  // Each call gets a unique session — stale onerror/onend callbacks from cancelled utterances are ignored
+  const session = ++speechSessionId;
+
   // Split into sentence chunks to avoid Chrome's ~15s TTS stall bug
   const chunks = plain.match(/[^.!?]+[.!?]*/g)?.map(s => s.trim()).filter(Boolean) ?? [plain];
   let index = 0;
 
-  // Switch to talking avatar immediately — don't rely on onstart which Chrome can miss
-  isSpeaking = true;
-  setAvatarState('talking');
-
   function speakNext() {
+    if (session !== speechSessionId) return; // cancelled by a newer speakText call
     if (index >= chunks.length) { isSpeaking = false; setAvatarState('idle'); return; }
     const utterance = new SpeechSynthesisUtterance(chunks[index++]);
     utterance.lang = "en-GB";
     utterance.rate = 1;
     utterance.pitch = 1;
     if (cachedVoice) utterance.voice = cachedVoice;
+    // Switch to talking avatar only when audio actually starts — avoids showing
+    // the talking animation while the voice is still loading
+    if (index === 1) utterance.onstart = () => {
+      if (session !== speechSessionId) return;
+      isSpeaking = true;
+      setAvatarState('talking');
+    };
     utterance.onend = speakNext;
-    utterance.onerror = () => { isSpeaking = false; setAvatarState('idle'); };
+    utterance.onerror = (e) => {
+      if (session !== speechSessionId) return; // stale — ignore
+      isSpeaking = false;
+      setAvatarState('idle');
+    };
     window.speechSynthesis.speak(utterance);
   }
   // Give Chrome a tick to process the cancel() before queuing new speech
@@ -452,14 +442,16 @@ avatarThinkingEl.innerHTML = `
 document.body.appendChild(avatarThinkingEl);
 
 function showThinking() {
-  // Project the avatar head from 3D space to screen coords, then offset to the right
   if (avatarHeadPosition) {
     const v = avatarHeadPosition.clone().project(camera);
     const headX = (v.x * 0.5 + 0.5) * window.innerWidth;
     const headY = (-v.y * 0.5 + 0.5) * window.innerHeight;
+    const clampedY = Math.max(10, Math.min(headY, window.innerHeight - 60));
+    console.log("Thinking bubble — headX:", headX, "headY:", headY, "clamped:", clampedY);
     avatarThinkingEl.style.left = `${headX + 8}px`;
-    avatarThinkingEl.style.top  = `${headY}px`;
+    avatarThinkingEl.style.top  = `${clampedY}px`;
   } else {
+    console.warn("Thinking bubble — avatarHeadPosition is null, using fallback");
     avatarThinkingEl.style.left = "60%";
     avatarThinkingEl.style.top  = "18%";
   }
@@ -554,10 +546,78 @@ async function handleSend(questionText, fromVoice = false) {
   }
 }
 
+const INTRO_TEXT = "Hi, welcome to Loughborough University's Open Day! I'm your virtual assistant, here to help answer any questions you might have about our courses, campus, student life, or anything else. Feel free to type or speak your question to get started.";
+
+function playIntro(waitForInteraction = false) {
+  appendMessage("bot", INTRO_TEXT);
+  micBtn.disabled = true;
+  micBtn.title = "Please wait for the introduction to finish.";
+
+  function doSpeak() {
+    window.speechSynthesis.cancel();
+    const session = ++speechSessionId;
+    const utterance = new SpeechSynthesisUtterance(INTRO_TEXT.replace(/[#*_`~\[\]()>|\\-]/g, "").replace(/\n+/g, " ").trim());
+    utterance.lang = "en-GB";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    if (cachedVoice) utterance.voice = cachedVoice;
+    utterance.onstart = () => {
+      if (session !== speechSessionId) return;
+      isSpeaking = true;
+      setAvatarState('talking');
+    };
+    utterance.onend = () => {
+      if (session !== speechSessionId) return;
+      isSpeaking = false; setAvatarState('idle'); micBtn.disabled = false; micBtn.title = "";
+    };
+    utterance.onerror = () => {
+      if (session !== speechSessionId) return;
+      isSpeaking = false; setAvatarState('idle'); micBtn.disabled = false; micBtn.title = "";
+    };
+    setTimeout(() => window.speechSynthesis.speak(utterance), 10);
+  }
+
+  if (waitForInteraction) {
+    let spoken = false;
+    function onInteract() {
+      if (spoken) return;
+      spoken = true;
+      document.removeEventListener("click", onInteract);
+      document.removeEventListener("keydown", onInteract);
+      doSpeak();
+    }
+    document.addEventListener("click", onInteract);
+    document.addEventListener("keydown", onInteract);
+  } else {
+    doSpeak();
+  }
+}
+
+function startNewConversation() {
+  // Stop any ongoing speech or request
+  window.speechSynthesis.cancel();
+  isSpeaking = false;
+  isSending = false;
+  setAvatarState('idle');
+  hideThinking();
+
+  // Reset conversation state
+  lastQuestion = "";
+  lastAnswer = "";
+  pendingEditElements = null;
+  textInput.value = "";
+  statusEl.textContent = DEFAULT_STATUS;
+
+  // Clear chat and replay intro
+  chatLog.innerHTML = "";
+  playIntro(false);
+}
+
 sendBtn.addEventListener("click", () => handleSend());
 textInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") handleSend();
 });
+document.getElementById("newConvBtn").addEventListener("click", startNewConversation);
 
 statusEl.textContent = DEFAULT_STATUS;
 
