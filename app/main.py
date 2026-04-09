@@ -81,7 +81,7 @@ def handle_ingestion_api(payload: Dict[str, Any]) -> Dict[str, Any]:
         embedding_model=payload.get("embedding_model", "text-embedding-3-small"),
         tagger_mode=payload.get("tagger", "heuristic"),
         llm_model=payload.get("llm_model", "gpt-4o-mini"),
-        version=payload.get("version", "ingest-v2"),
+        version=payload.get("version", "ingest-v3"),
         json_group_size=int(payload.get("json_group_size", 30)),
     )
     return orchestrator.ingest(
@@ -231,7 +231,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--embedding-model", default="text-embedding-3-small")
     parser.add_argument("--tagger", choices=["heuristic", "llm"], default="heuristic")
     parser.add_argument("--llm-model", default="gpt-4o-mini")
-    parser.add_argument("--version", default="ingest-v2")
+    parser.add_argument("--version", default="ingest-v3")
     parser.add_argument("--json-group-size", type=int, default=30)
     parser.add_argument(
         "--full-reingest",

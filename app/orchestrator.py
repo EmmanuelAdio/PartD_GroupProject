@@ -34,7 +34,7 @@ class IngestionOrchestrator:
         embedding_model: str = "text-embedding-3-small",
         tagger_mode: str = "heuristic",
         llm_model: str = "gpt-4o-mini",
-        version: str = "ingest-v2",
+        version: str = "ingest-v3",
         json_group_size: int = 30,
     ) -> None:
         self.data_dir = Path(data_dir)
