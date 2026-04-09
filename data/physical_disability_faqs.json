@@ -1,0 +1,35 @@
+{
+  "source_url": "https://www.lboro.ac.uk/services/student-services/topics/physical-disability/",
+  "scraped_at": "2026-02-22T18:30:15.420624+00:00",
+  "sections": [
+    {
+      "section_title": "Frequently Asked Questions",
+      "faqs": [
+        {
+          "question": "How accessible are the buildings, such as lecture halls, the library etc, across campus?",
+          "answer": "Physical access to buildings on campus can vary, depending on the age and design of the facility and its location on the campus. We recommend you discuss your access requirements with a Disability Advisor as soon as possible."
+        },
+        {
+          "question": "What sporting opportunities are there for people with physical disabilities?",
+          "answer": "You can find further information about the sport available at Loughborough below: • University Sport webpages (https://www.lboro.ac.uk/sport/) • University Parasport webpages (https://www.lboro.ac.uk/sport/para-sport/)"
+        },
+        {
+          "question": "I have a new diagnosis, how can I access support at University for my studies?",
+          "answer": "Please contact us via our accessing support page (https://www.lboro.ac.uk/services/student-services/about-us/accessing-support/) and an Advisor will be in touch to discuss your diagnosis and support available to you."
+        },
+        {
+          "question": "How do I know if I have support already in place at University for me?",
+          "answer": "You can check all your approved support here via the disability tab in your self-service portal (https://www.lboro.ac.uk/services/registry/self-service/) ."
+        },
+        {
+          "question": "I require changes made to my University hall accommodation to meet my physical needs, what should I do?",
+          "answer": "There is a section in the Disability and Health Portal (https://lucas.lboro.ac.uk/web_apx/f?p=144:101::::::) for you to note any accommodation requirements linked to your physical or mental health. Please see our answers to frequently asked questions about specific accommodation requirements (https://www.lboro.ac.uk/services/accommodation/faq/specific-requirements/) ."
+        },
+        {
+          "question": "I have a professional carer/team of carers, how does my University accommodation support this?",
+          "answer": "Please see our answers to frequently asked questions about specific accommodation requirements (https://www.lboro.ac.uk/services/accommodation/faq/specific-requirements/) ."
+        }
+      ]
+    }
+  ]
+}
