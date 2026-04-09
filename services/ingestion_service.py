@@ -172,6 +172,9 @@ class IngestionService:
             return [self._make_chunk(doc.source_id, b, order=i, section="qna") for i, b in enumerate(blocks)]
 
         if doc.source_type == "json":
+            raw_json = doc.raw.get("json")
+            if isinstance(raw_json, list):
+                return self._entity_chunk(doc.source_id, raw_json)
             return self._line_group_chunk(
                 source_id=doc.source_id,
                 text=doc.text,
@@ -187,6 +190,15 @@ class IngestionService:
         for i in range(0, len(lines), group_size):
             block = "\n".join(lines[i : i + group_size])
             chunks.append(self._make_chunk(source_id, block, order=len(chunks), section=section))
+        return chunks
+
+    def _entity_chunk(self, source_id: str, items: List[Any]) -> List[Chunk]:
+        chunks: List[Chunk] = []
+        for i, item in enumerate(items):
+            block = self._json_to_text(item, prefix=f"[{i}]").strip()
+            if not block:
+                continue
+            chunks.append(self._make_chunk(source_id, block, order=i, section="json_fields"))
         return chunks
 
     def _make_chunk(self, source_id: str, text: str, order: int, section: Optional[str]) -> Chunk:
