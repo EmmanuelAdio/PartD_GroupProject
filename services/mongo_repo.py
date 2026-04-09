@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import os
+import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Set
 
 from pymongo import MongoClient, ReplaceOne
+from pymongo.errors import ServerSelectionTimeoutError
 try:
     from dotenv import load_dotenv
 except ImportError:  # pragma: no cover
     load_dotenv = None
+try:
+    import certifi
+except ImportError:  # pragma: no cover
+    certifi = None
 
 try:
     from schemas.models import ChunkRecord
@@ -25,6 +31,10 @@ class MongoRepo:
         db_name: str = "open_day_knowledge",
         collection_name: str = "kb_chuncks",
         manifest_collection_name: str = "kb_ingestion_manifest",
+        server_selection_timeout_ms: int = 30_000,
+        connect_timeout_ms: int = 20_000,
+        socket_timeout_ms: int = 20_000,
+        tls_ca_file: Optional[str] = None,
     ) -> None:
         if load_dotenv is not None:
             load_dotenv()
@@ -33,14 +43,41 @@ class MongoRepo:
         if not self.mongo_uri:
             raise ValueError("MONGODB_URI is not set. Add it to your environment or pass mongo_uri explicitly.")
 
-        self.client = MongoClient(self.mongo_uri)
+        self.server_selection_timeout_ms = int(
+            os.getenv("MONGODB_SERVER_SELECTION_TIMEOUT_MS", str(server_selection_timeout_ms))
+        )
+        self.connect_timeout_ms = int(
+            os.getenv("MONGODB_CONNECT_TIMEOUT_MS", str(connect_timeout_ms))
+        )
+        self.socket_timeout_ms = int(
+            os.getenv("MONGODB_SOCKET_TIMEOUT_MS", str(socket_timeout_ms))
+        )
+        self.tls_ca_file = tls_ca_file or os.getenv("MONGODB_TLS_CA_FILE")
+        if not self.tls_ca_file and certifi is not None:
+            self.tls_ca_file = certifi.where()
+
+        client_kwargs: Dict[str, Any] = {
+            "serverSelectionTimeoutMS": self.server_selection_timeout_ms,
+            "connectTimeoutMS": self.connect_timeout_ms,
+            "socketTimeoutMS": self.socket_timeout_ms,
+        }
+        if self.tls_ca_file:
+            client_kwargs["tlsCAFile"] = self.tls_ca_file
+
+        self.client = MongoClient(self.mongo_uri, **client_kwargs)
         self.db = self.client[db_name]
         self.collection = self.db[collection_name]
         self.manifest_collection = self.db[manifest_collection_name]
-        self.ensure_indexes()
+        try:
+            self.ensure_indexes()
+        except ServerSelectionTimeoutError as exc:
+            raise RuntimeError(self._format_connection_error(exc)) from exc
 
     def ping(self) -> None:
-        self.client.admin.command("ping")
+        try:
+            self.client.admin.command("ping")
+        except ServerSelectionTimeoutError as exc:
+            raise RuntimeError(self._format_connection_error(exc)) from exc
 
     def upsert_chunks(self, records: List[ChunkRecord]) -> Dict[str, int]:
         if not records:
@@ -128,3 +165,16 @@ class MongoRepo:
                 if lhs.strip() == key:
                     return rhs.strip().strip('"').strip("'")
         return None
+
+    def _format_connection_error(self, exc: ServerSelectionTimeoutError) -> str:
+        tls_ca = self.tls_ca_file or "not-set"
+        return (
+            "MongoDB connection failed before startup completed.\n"
+            f"python_executable={sys.executable}\n"
+            f"serverSelectionTimeoutMS={self.server_selection_timeout_ms}, "
+            f"connectTimeoutMS={self.connect_timeout_ms}, socketTimeoutMS={self.socket_timeout_ms}\n"
+            f"tlsCAFile={tls_ca}\n"
+            f"error={exc}\n"
+            "Troubleshooting: run `python scripts/mongo_tls_probe.py`, verify Atlas IP allowlist, "
+            "verify DB user permissions, and ensure you are using the project .venv interpreter."
+        )

@@ -45,6 +45,11 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
+Recommended interpreter for this repo:
+```bash
+.venv\Scripts\python.exe
+```
+
 Create `.env`:
 ```env
 MONGODB_URI="your_mongodb_connection_string"
@@ -77,7 +82,7 @@ From the repo root:
 ```bash
 cd c:\Users\Emman\OneDrive\Documents\GitHub\PartD_GroupProject
 pip install -r requirements.txt
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 Backend will be available at:
@@ -729,6 +734,24 @@ No explicit rollback/rebuild command per source and version beyond manual delete
 
 ### `MONGODB_URI is not set`
 - Add it to `.env` or shell environment.
+
+### Atlas TLS handshake failures at startup
+If startup fails with `ServerSelectionTimeoutError` + `SSL handshake failed`, run:
+```bash
+.venv\Scripts\python.exe scripts/mongo_tls_probe.py
+```
+
+Then verify:
+1. You are running with repo interpreter `.venv\Scripts\python.exe`.
+2. `MONGODB_URI` in root `.env` is a fresh Atlas Driver URI.
+3. Atlas Network Access includes your current public IP.
+4. Atlas DB user has read/write permissions on `open_day_knowledge`.
+5. VPN/proxy/SSL interception is disabled or tested from another network.
+
+Once probe passes, retry backend startup:
+```bash
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
 
 ### `OPENAI_API_KEY is not set` / `OPEN_API_KEY is not set`
 - Required for OpenAI embeddings and LLM calls.
