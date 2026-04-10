@@ -52,64 +52,129 @@ scene.add(dirLight);
 
 // load avatar 
 const loader = new GLTFLoader();
-let mixer = null;
+const avatars  = { idle: null, talking: null };
+const mixers   = { idle: null, talking: null };
+let mouthMesh = null;
+let mouthOpenIndex = -1;
+let isSpeaking = false;
+let avatarHeadPosition = null;
+let currentAvatarState = 'idle';
+let idleAvatarPosition = null; // shared position applied to all avatars
 
-loader.load(
-  "/male2.glb",
-  (gltf) => {
-    const avatar = gltf.scene;
-    scene.add(avatar);
+function setAvatarState(state) {
+  const next = avatars[state] ? state : 'idle';
+  if (avatars[currentAvatarState]) avatars[currentAvatarState].visible = false;
+  if (avatars[next])              avatars[next].visible = true;
+  currentAvatarState = next;
+}
 
-    // autot-center and auto-frame 
-    const box = new THREE.Box3().setFromObject(avatar);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
+// Centre and ground an avatar; returns its final bounding box
+function positionAvatar(avatar) {
+  const box = new THREE.Box3().setFromObject(avatar);
+  avatar.position.sub(box.getCenter(new THREE.Vector3()));
+  const boxGround = new THREE.Box3().setFromObject(avatar);
+  avatar.position.y -= boxGround.min.y;
+  return new THREE.Box3().setFromObject(avatar);
+}
 
-    avatar.position.sub(center); // center at origin
+// Set up camera from the idle avatar's bounding box — called as soon as it loads
+function setupCamera(box) {
+  const size   = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
 
-    // place feet on ground
-    const boxGround = new THREE.Box3().setFromObject(avatar);
-    avatar.position.y -= boxGround.min.y;
+  controls.target.copy(center);
+  controls.update();
 
-    const box2 = new THREE.Box3().setFromObject(avatar);
-    const size2 = box2.getSize(new THREE.Vector3());
-    const center2 = box2.getCenter(new THREE.Vector3());
+  avatarHeadPosition = new THREE.Vector3(center.x, box.max.y * 0.88, center.z);
 
-    controls.target.copy(center2);
-    controls.update();
+  const maxDim  = Math.max(size.x, size.y, size.z);
+  const fov     = camera.fov * (Math.PI / 180);
+  const cameraZ = Math.abs((maxDim / 2) / Math.tan(fov / 2)) * 1.1;
 
-    const maxDim = Math.max(size2.x, size2.y, size2.z);
-    const fov = camera.fov * (Math.PI / 180);
-    let cameraZ = Math.abs((maxDim / 2) / Math.tan(fov / 2));
-    cameraZ *= 1.5;
+  camera.position.set(center.x, center.y + maxDim * 0.35, center.z + cameraZ);
+  camera.near = cameraZ / 100;
+  camera.far  = cameraZ * 100;
+  camera.updateProjectionMatrix();
+  controls.minDistance = cameraZ * 0.3;
+  controls.maxDistance = cameraZ * 3;
+}
 
-    camera.position.set(center2.x, center2.y + maxDim * 0.2, center2.z + cameraZ);
-    camera.near = cameraZ / 100;
-    camera.far = cameraZ * 100;
-    camera.updateProjectionMatrix();
+// Load idle avatar first — show it immediately and start the intro
+loader.load("/male2.glb", (gltf) => {
+  const avatar = gltf.scene;
+  scene.add(avatar);
+  const box = positionAvatar(avatar);
+  idleAvatarPosition = avatar.position.clone();
+  avatars.idle = avatar;
+  // avatar.visible is true by default — shown straight away
 
-    controls.minDistance = cameraZ * 0.3;
-    controls.maxDistance = cameraZ * 3;
+  setupCamera(box);
 
-    // animation controls 
-    if (gltf.animations && gltf.animations.length > 0) {
-      mixer = new THREE.AnimationMixer(avatar);
-      const action = mixer.clipAction(gltf.animations[0]);
-      action.play();
-      console.log("Animations:", gltf.animations.map((a) => a.name));
-    } else {
-      console.log("No animations found in GLB.");
+  if (gltf.animations?.length) {
+    mixers.idle = new THREE.AnimationMixer(avatar);
+    mixers.idle.clipAction(gltf.animations[0]).play();
+  }
+
+  // Show intro; speak on first interaction (Chrome autoplay policy)
+  playIntro(true);
+}, undefined, (err) => console.error("idle GLB load error:", err));
+
+// Load talking avatar in parallel — hides itself until needed
+loader.load("/male2_talking.glb", (gltf) => {
+  const avatar = gltf.scene;
+  scene.add(avatar);
+  positionAvatar(avatar);
+  // Snap to the same position as the idle avatar so they perfectly overlap
+  if (idleAvatarPosition) avatar.position.copy(idleAvatarPosition);
+  avatar.visible = false;
+  avatars.talking = avatar;
+
+  avatar.traverse((child) => {
+    if (child.isMesh && child.morphTargetDictionary && "mouthOpen" in child.morphTargetDictionary) {
+      mouthMesh = child;
+      mouthOpenIndex = child.morphTargetDictionary["mouthOpen"];
+      console.log("Found mouthOpen morph target on:", child.name, "at index:", mouthOpenIndex);
     }
-  },
-  undefined,
-  (err) => console.error("GLB load error:", err)
-);
+  });
+  if (gltf.animations?.length) {
+    mixers.talking = new THREE.AnimationMixer(avatar);
+    mixers.talking.clipAction(gltf.animations[0]).play();
+  }
+}, undefined, (err) => console.error("talking GLB load error:", err));
 
 const clock = new THREE.Clock();
+let mouthTime = 0;
+let mouthTarget = 0;
+let mouthCurrent = 0;
+let nextChangeTime = 0;
 function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
-  if (mixer) mixer.update(dt);
+  // tick all mixers so hidden avatars stay in sync
+  if (mixers.idle)    mixers.idle.update(dt);
+  if (mixers.talking) mixers.talking.update(dt);
+
+  // animate mouth while speaking — varied rhythm for natural look
+  if (mouthMesh && mouthOpenIndex >= 0) {
+    if (isSpeaking) {
+      mouthTime += dt;
+      if (mouthTime >= nextChangeTime) {
+        // randomly pick a new mouth openness target
+        const isSilentGap = Math.random() < 0.15;
+        mouthTarget = isSilentGap ? 0.05 : 0.15 + Math.random() * 0.55;
+        // vary how long each position holds (fast syllables + brief pauses)
+        nextChangeTime = mouthTime + 0.06 + Math.random() * 0.12;
+      }
+      // smooth interpolation toward target
+      mouthCurrent += (mouthTarget - mouthCurrent) * Math.min(1, dt * 18);
+      mouthMesh.morphTargetInfluences[mouthOpenIndex] = mouthCurrent;
+    } else {
+      mouthCurrent *= 0.85;
+      mouthTarget = 0;
+      mouthMesh.morphTargetInfluences[mouthOpenIndex] = mouthCurrent;
+    }
+  }
+
   controls.update();
   renderer.render(scene, camera);
 }
@@ -135,6 +200,60 @@ const QUERY_ENDPOINT = `${API_BASE_URL}/query`;
 let isSending = false;
 let recognition = null;
 let isListening = false;
+let pendingEditElements = null;
+let lastQuestion = "";
+let lastAnswer = "";
+
+const CANNED_RESPONSES = [
+  {
+    patterns: [/^thank(s| you)/i, /^cheers/i],
+    reply: "You're welcome! I hope I was able to help. Feel free to ask if you have any more questions."
+  },
+  {
+    patterns: [/^hello/i, /^hi\b/i, /^hey\b/i, /^good (morning|afternoon|evening)/i],
+    reply: "Hello! I'm the Loughborough University virtual assistant. How can I help you today?"
+  },
+  {
+    patterns: [/^bye/i, /^goodbye/i, /^see you/i],
+    reply: "Goodbye! I hope I was helpful. Feel free to come back if you have more questions about Loughborough University."
+  },
+  {
+    patterns: [/^who are you/i, /^what are you/i],
+    reply: "I'm a virtual assistant for Loughborough University, here to help answer questions about courses, open days, entry requirements, and student life."
+  },
+  {
+    patterns: [/^what can you (help|do)/i, /^what do you know/i, /^what can (i|you) ask/i],
+    reply: "I can answer questions about Loughborough University courses, entry requirements, open days, student life, campus facilities, and much more. Go ahead and ask!"
+  },
+  {
+    patterns: [/^(that'?s?|it'?s?) (helpful|great|brilliant|perfect|amazing|awesome)/i, /^great answer/i],
+    reply: "Glad I could help! Let me know if you have any more questions."
+  },
+  {
+    patterns: [/^(can you )?repeat that/i, /^say that again/i, /^pardon/i],
+    reply: () => lastAnswer || "I'm sorry, I don't have a previous answer to repeat."
+  },
+  {
+    patterns: [/^(i don'?t understand|can you explain|i'?m? confused)/i],
+    reply: "I'm sorry if that wasn't clear. Could you rephrase your question and I'll try to give a better answer."
+  },
+];
+
+function checkCannedResponse(q) {
+  for (const { patterns, reply } of CANNED_RESPONSES) {
+    if (patterns.some(p => p.test(q.trim()))) {
+      return typeof reply === "function" ? reply() : reply;
+    }
+  }
+  return null;
+}
+
+function buildQuery(q) {
+  if (/^(what about|and what about|how about|tell me more|more about|can you elaborate|what else)/i.test(q.trim()) && lastQuestion) {
+    return `${q} (in relation to: ${lastQuestion})`;
+  }
+  return q;
+}
 
 const md = new MarkdownIt({
   html: false,
@@ -174,8 +293,100 @@ function renderAvatarMessage(markdownText) {
   return content;
 }
 
+function createFeedbackRow(text) {
+  const feedbackRow = document.createElement("div");
+  feedbackRow.className = "feedback-row";
 
-function appendMessage(role, text) {
+  const label = document.createElement("span");
+  label.className = "feedback-label";
+  label.textContent = "Was your question answered?";
+
+  const yesBtn = document.createElement("button");
+  yesBtn.className = "feedback-btn feedback-yes";
+  yesBtn.textContent = "Yes";
+
+  const noBtn = document.createElement("button");
+  noBtn.className = "feedback-btn feedback-no";
+  noBtn.textContent = "No";
+
+  function handleFeedback(answered) {
+    yesBtn.disabled = true;
+    noBtn.disabled = true;
+    feedbackRow.innerHTML = answered
+      ? `<span class="feedback-thanks">Glad we could help!</span>`
+      : `<span class="feedback-thanks">Sorry about that \u2014 we'll try to improve.</span>`;
+    console.log("Feedback:", answered ? "answered" : "not answered", "for:", text);
+    // TODO: send feedback to your backend
+    // fetch("/api/feedback", { method: "POST", body: JSON.stringify({ answer: text, resolved: answered }) });
+  }
+
+  yesBtn.addEventListener("click", () => handleFeedback(true));
+  noBtn.addEventListener("click", () => handleFeedback(false));
+
+  feedbackRow.appendChild(label);
+  feedbackRow.appendChild(yesBtn);
+  feedbackRow.appendChild(noBtn);
+  return feedbackRow;
+}
+
+let cachedVoice = null;
+function loadPreferredVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  cachedVoice =
+    voices.find(v => v.name === "Google UK English Male") ||
+    voices.find(v => v.localService && v.lang === "en-GB") ||
+    voices.find(v => v.localService && v.lang.startsWith("en")) ||
+    null;
+  console.log("Selected voice:", cachedVoice?.name, "| local:", cachedVoice?.localService);
+}
+if (window.speechSynthesis) {
+  loadPreferredVoice();
+  window.speechSynthesis.addEventListener("voiceschanged", loadPreferredVoice);
+  window.addEventListener("beforeunload", () => window.speechSynthesis.cancel());
+}
+let speechSessionId = 0; // incremented on each new speakText call to invalidate stale callbacks
+
+function speakText(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const plain = text.replace(/[#*_`~\[\]()>|\\-]/g, "").replace(/\n+/g, " ").trim();
+  if (!plain) return;
+
+  // Each call gets a unique session — stale onerror/onend callbacks from cancelled utterances are ignored
+  const session = ++speechSessionId;
+
+  // Split into sentence chunks to avoid Chrome's ~15s TTS stall bug
+  const chunks = plain.match(/[^.!?]+[.!?]*/g)?.map(s => s.trim()).filter(Boolean) ?? [plain];
+  let index = 0;
+
+  function speakNext() {
+    if (session !== speechSessionId) return; // cancelled by a newer speakText call
+    if (index >= chunks.length) { isSpeaking = false; setAvatarState('idle'); return; }
+    const utterance = new SpeechSynthesisUtterance(chunks[index++]);
+    utterance.lang = "en-GB";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    if (cachedVoice) utterance.voice = cachedVoice;
+    // Switch to talking avatar only when audio actually starts — avoids showing
+    // the talking animation while the voice is still loading
+    if (index === 1) utterance.onstart = () => {
+      if (session !== speechSessionId) return;
+      isSpeaking = true;
+      setAvatarState('talking');
+    };
+    utterance.onend = speakNext;
+    utterance.onerror = (e) => {
+      if (session !== speechSessionId) return; // stale — ignore
+      isSpeaking = false;
+      setAvatarState('idle');
+    };
+    window.speechSynthesis.speak(utterance);
+  }
+  // Give Chrome a tick to process the cancel() before queuing new speech
+  setTimeout(speakNext, 10);
+}
+
+function appendMessage(role, text, fromVoice = false) {
   const message = document.createElement("article");
   message.className = `msg ${role}`;
 
@@ -188,6 +399,25 @@ function appendMessage(role, text) {
     role === "bot" ? renderAvatarMessage(text) : renderUserMessage(text);
   message.appendChild(content);
 
+  if (role === "me" && fromVoice) {
+    const editBtn = document.createElement("button");
+    editBtn.className = "edit-btn";
+    editBtn.textContent = "✏️ Edit";
+    editBtn.title = "Transcription wrong? Edit and resubmit.";
+    editBtn.addEventListener("click", () => {
+      // store this message for removal on resubmit; bot sibling resolved at send time
+      pendingEditElements = [message];
+      textInput.value = text;
+      textInput.focus();
+      statusEl.textContent = "Edit your question and press Send or Enter.";
+    });
+    message.appendChild(editBtn);
+  }
+
+  if (role === "bot") {
+    message.appendChild(createFeedbackRow(text));
+  }
+
   chatLog.appendChild(message);
   chatLog.scrollTop = chatLog.scrollHeight;
 }
@@ -197,7 +427,42 @@ function setRequestState(pending) {
   sendBtn.disabled = pending;
 }
 
-async function handleSend(questionText) {
+// Thinking overlay — created once, toggled via class
+const avatarThinkingEl = document.createElement("div");
+avatarThinkingEl.id = "avatar-thinking";
+avatarThinkingEl.innerHTML = `
+  <div class="thought-trail">
+    <div class="thought-trail-dot"></div>
+    <div class="thought-trail-dot"></div>
+    <div class="thought-trail-dot"></div>
+  </div>
+  <div class="thought-bubble">
+    <div class="thinking-dots"><span></span><span></span><span></span></div>
+  </div>`;
+document.body.appendChild(avatarThinkingEl);
+
+function showThinking() {
+  if (avatarHeadPosition) {
+    const v = avatarHeadPosition.clone().project(camera);
+    const headX = (v.x * 0.5 + 0.5) * window.innerWidth;
+    const headY = (-v.y * 0.5 + 0.5) * window.innerHeight;
+    const clampedY = Math.max(10, Math.min(headY, window.innerHeight - 60));
+    console.log("Thinking bubble — headX:", headX, "headY:", headY, "clamped:", clampedY);
+    avatarThinkingEl.style.left = `${headX + 8}px`;
+    avatarThinkingEl.style.top  = `${clampedY}px`;
+  } else {
+    console.warn("Thinking bubble — avatarHeadPosition is null, using fallback");
+    avatarThinkingEl.style.left = "60%";
+    avatarThinkingEl.style.top  = "18%";
+  }
+  avatarThinkingEl.classList.add("visible");
+}
+
+function hideThinking() {
+  avatarThinkingEl.classList.remove("visible");
+}
+
+async function handleSend(questionText, fromVoice = false) {
   const q = (questionText ?? textInput.value).trim();
   if (!q) {
     return;
@@ -207,16 +472,41 @@ async function handleSend(questionText) {
     return;
   }
 
-  appendMessage("me", q);
+  // remove original voice message + its bot response if user edited and resubmitted
+  if (pendingEditElements) {
+    const [userMsg] = pendingEditElements;
+    const botMsg = userMsg?.nextElementSibling;
+    botMsg?.remove();
+    userMsg?.remove();
+    pendingEditElements = null;
+  }
+
+  appendMessage("me", q, fromVoice);
   textInput.value = "";
+
+  // check for canned responses first
+  const canned = checkCannedResponse(q);
+  if (canned) {
+    appendMessage("bot", canned);
+    speakText(canned);
+    lastAnswer = canned;
+    statusEl.textContent = "Answer received. Ask another question any time.";
+    setRequestState(false);
+    return;
+  }
+
   setRequestState(true);
   statusEl.textContent = "Avatar is thinking...";
+  showThinking();
+
+  const queryToSend = buildQuery(q);
+  lastQuestion = q;
 
   try {
     const response = await fetch(QUERY_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: q }),
+      body: JSON.stringify({ query: queryToSend }),
     });
 
     const contentType = response.headers.get("content-type") || "";
@@ -236,10 +526,14 @@ async function handleSend(questionText) {
       payload && typeof payload.answer === "string" && payload.answer.trim()
         ? payload.answer.trim()
         : "I could not generate an answer from the backend.";
+    lastAnswer = answer;
+    hideThinking();
     appendMessage("bot", answer);
+    speakText(answer);
     statusEl.textContent = "Answer received. Ask another question any time.";
   } catch (error) {
     console.error("Chat request failed:", error);
+    hideThinking();
     appendMessage(
       "bot",
       "Sorry, I could not reach the backend just now. Please try again."
@@ -252,10 +546,78 @@ async function handleSend(questionText) {
   }
 }
 
+const INTRO_TEXT = "Hi, welcome to Loughborough University's Open Day! I'm your virtual assistant, here to help answer any questions you might have about our courses, campus, student life, or anything else. Feel free to type or speak your question to get started.";
+
+function playIntro(waitForInteraction = false) {
+  appendMessage("bot", INTRO_TEXT);
+  micBtn.disabled = true;
+  micBtn.title = "Please wait for the introduction to finish.";
+
+  function doSpeak() {
+    window.speechSynthesis.cancel();
+    const session = ++speechSessionId;
+    const utterance = new SpeechSynthesisUtterance(INTRO_TEXT.replace(/[#*_`~\[\]()>|\\-]/g, "").replace(/\n+/g, " ").trim());
+    utterance.lang = "en-GB";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    if (cachedVoice) utterance.voice = cachedVoice;
+    utterance.onstart = () => {
+      if (session !== speechSessionId) return;
+      isSpeaking = true;
+      setAvatarState('talking');
+    };
+    utterance.onend = () => {
+      if (session !== speechSessionId) return;
+      isSpeaking = false; setAvatarState('idle'); micBtn.disabled = false; micBtn.title = "";
+    };
+    utterance.onerror = () => {
+      if (session !== speechSessionId) return;
+      isSpeaking = false; setAvatarState('idle'); micBtn.disabled = false; micBtn.title = "";
+    };
+    setTimeout(() => window.speechSynthesis.speak(utterance), 10);
+  }
+
+  if (waitForInteraction) {
+    let spoken = false;
+    function onInteract() {
+      if (spoken) return;
+      spoken = true;
+      document.removeEventListener("click", onInteract);
+      document.removeEventListener("keydown", onInteract);
+      doSpeak();
+    }
+    document.addEventListener("click", onInteract);
+    document.addEventListener("keydown", onInteract);
+  } else {
+    doSpeak();
+  }
+}
+
+function startNewConversation() {
+  // Stop any ongoing speech or request
+  window.speechSynthesis.cancel();
+  isSpeaking = false;
+  isSending = false;
+  setAvatarState('idle');
+  hideThinking();
+
+  // Reset conversation state
+  lastQuestion = "";
+  lastAnswer = "";
+  pendingEditElements = null;
+  textInput.value = "";
+  statusEl.textContent = DEFAULT_STATUS;
+
+  // Clear chat and replay intro
+  chatLog.innerHTML = "";
+  playIntro(false);
+}
+
 sendBtn.addEventListener("click", () => handleSend());
 textInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") handleSend();
 });
+document.getElementById("newConvBtn").addEventListener("click", startNewConversation);
 
 statusEl.textContent = DEFAULT_STATUS;
 
@@ -265,7 +627,7 @@ const SpeechRecognition =
 if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.lang = "en-GB";
-  recognition.interimResults = false;
+  recognition.interimResults = true;
   recognition.continuous = false;
 
   recognition.onstart = () => {
@@ -275,23 +637,30 @@ if (SpeechRecognition) {
   };
 
   recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
-    statusEl.textContent = `Heard: "${transcript}"`;
+    let transcript = "";
+    for (let i = 0; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript;
+    }
     textInput.value = transcript;
-
-    // Voice-first behavior: auto-send as soon as we get text
-    handleSend(transcript);
+    statusEl.textContent = "Listening…";
   };
 
   recognition.onerror = (event) => {
-    statusEl.textContent = `Mic error: ${event.error}. You can still type.`;
+    if (event.error === "no-speech") {
+      statusEl.textContent = "No speech detected. Try again or type your question.";
+    } else {
+      statusEl.textContent = `Mic error: ${event.error}. You can still type.`;
+    }
   };
 
   recognition.onend = () => {
     isListening = false;
     micBtn.textContent = "🎤";
-    // Don’t overwrite error messages; only reset if currently "Listening"
-    if (statusEl.textContent.startsWith("Listening")) {
+    const transcript = textInput.value.trim();
+    if (transcript) {
+      statusEl.textContent = `Heard: "${transcript}"`;
+      handleSend(transcript, true);
+    } else if (!statusEl.textContent.startsWith("Mic error") && !statusEl.textContent.startsWith("No speech")) {
       statusEl.textContent = DEFAULT_STATUS;
     }
   };
@@ -310,7 +679,6 @@ if (SpeechRecognition) {
     }
   });
 } else {
-  // if browser is unable to support speech-to-text
   micBtn.disabled = true;
   micBtn.title = "Speech-to-text not supported in this browser.";
   statusEl.textContent =
