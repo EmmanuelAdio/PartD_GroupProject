@@ -174,6 +174,7 @@ function renderAvatarMessage(markdownText) {
   return content;
 }
 
+
 function appendMessage(role, text) {
   const message = document.createElement("article");
   message.className = `msg ${role}`;
