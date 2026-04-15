@@ -34,6 +34,13 @@ def _sample_query_result():
         "retrieval_run": {
             "evidence": [{"chunk_id": "chunk-1"}],
         },
+        "timing_ms": {
+            "processor": 1.2,
+            "retriever": 2.3,
+            "answerer": 3.4,
+            "evaluator": 4.5,
+            "total": 11.4,
+        },
     }
 
 
@@ -64,6 +71,12 @@ def test_shape_query_response_debug_payload_includes_evaluator_run() -> None:
     payload = _shape_query_response(_sample_query_result(), debug=True)
     assert "evaluator_run" in payload
     assert payload["evaluator_run"]["verdict"] == "pass"
+
+
+def test_shape_query_response_debug_payload_includes_timing_ms() -> None:
+    payload = _shape_query_response(_sample_query_result(), debug=True)
+    assert "timing_ms" in payload
+    assert payload["timing_ms"]["total"] == 11.4
 
 
 def test_frontend_origins_defaults_when_env_missing(monkeypatch) -> None:
