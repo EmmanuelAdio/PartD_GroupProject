@@ -750,6 +750,64 @@ Use `locustfile.py` when you need:
 - `locust_*_failures.csv`
 - `locust_*.html`
 
+### Notebook analysis and figure generation
+
+This repository also includes notebook-first analysis for the evaluation and load-test outputs:
+- `notebooks/eval_analysis.ipynb`
+- `notebooks/load_test_analysis.ipynb`
+
+These notebooks are designed to:
+- load the latest matching CSV outputs automatically by default
+- keep the report tables and printed summaries in the notebook output
+- save chart PNG files into `results/figures/`
+- also display grouped/overview figures directly in notebook output cells
+
+Current notebook behavior:
+- `eval_analysis.ipynb` keeps the preview tables, metric tables, timing tables, and evaluator tables, then shows:
+  - section overview figures
+  - grouped figures for related plots
+  - a final `Generated Figure Gallery` section that displays the saved evaluation figures in one place
+- `load_test_analysis.ipynb` keeps the summary tables and exception tables, then shows:
+  - inline overview figures for load summary, time-series behavior, and failures/exceptions
+  - grouped figures for related load-test plots
+
+Figure-saving behavior:
+- Saved figures go to `results/figures/`.
+- Figure filenames are deterministic so rerunning the same notebook does not create clutter from repeated copies.
+- A figure-signature manifest is stored at:
+  - `results/figures/_figure_manifest.json`
+- If the same chart is regenerated from the same data, the existing PNG is reused instead of being saved again.
+- If the data changes, the stable PNG is updated in place.
+
+Notebook usage:
+
+1. Start Jupyter from the repo root with the project interpreter:
+```bash
+.venv\Scripts\python.exe -m notebook
+```
+
+2. Open either notebook and select the `.venv` kernel.
+
+3. Run the notebook from top to bottom.
+
+4. Check:
+- inline tables in notebook output
+- inline grouped/overview figures in notebook output
+- saved PNG files in `results/figures/`
+
+If notebook figures do not appear:
+- restart the kernel
+- rerun the setup/import cell first
+- rerun the plotting cells
+
+The notebooks rely on the project analysis helpers in:
+- `scripts/analysis_helpers.py`
+
+Those helpers now provide:
+- stable figure naming
+- signature-based figure deduplication
+- save-and-display behavior for notebook plotting
+
 ## Ingestion test commands
 
 ### 1) Local test for all JSON files
