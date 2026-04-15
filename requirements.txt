@@ -12,3 +12,5 @@ ragas
 pandas
 datasets
 locust
+matplotlib
+ipykernel
