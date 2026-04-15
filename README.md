@@ -386,6 +386,370 @@ curl -X POST "http://127.0.0.1:8000/query" \
 - `retrieval_run.evidence`
 - `retrieval_run.diagnostics`
 
+## Evaluation and load testing
+
+This repository now includes three separate testing/evaluation paths for the chatbot:
+- `scripts/eval_accuracy.py`: offline quality evaluation with RAGAS.
+- `scripts/eval_evaluator.py`: offline evaluator/orchestration behavior logging.
+- `locustfile.py`: API load test against `POST /query`.
+
+These are intentionally different:
+- `eval_accuracy.py` does not call the HTTP API. It imports and runs `QueryOrchestrator.run()` directly inside Python, then scores the outputs with RAGAS.
+- `eval_evaluator.py` also does not call the HTTP API. It imports and runs `QueryOrchestrator.run()` directly, then logs evaluator decisions, retries, fallback usage, and timing.
+- `locustfile.py` does call the live API. It sends real HTTP `POST /query` requests to FastAPI and measures latency, throughput, and failures under concurrent load.
+
+### Benchmark dataset
+
+Both evaluation scripts use the built-in benchmark set in:
+- `scripts/benchmark_questions.py`
+
+Each benchmark item contains:
+- `id`
+- `category`
+- `question`
+- `ground_truth_answer`
+
+The benchmark currently covers:
+- accommodation
+- undergraduate courses
+- contextual offers / admissions / policy
+
+### Timing instrumentation
+
+`QueryOrchestrator.run()` now returns additive timing metadata in:
+
+```json
+"timing_ms": {
+  "processor": 0.0,
+  "retriever": 0.0,
+  "answerer": 0.0,
+  "evaluator": 0.0,
+  "total": 0.0
+}
+```
+
+The evaluation scripts flatten this into row-level columns such as:
+- `processor_time_ms`
+- `retriever_time_ms`
+- `answerer_time_ms`
+- `evaluator_time_ms`
+- `total_time_ms`
+
+### Accuracy evaluation with RAGAS
+
+Purpose:
+- run the benchmark questions through the full orchestrator
+- capture generated answers and retrieved contexts
+- compute report-ready RAGAS metrics
+
+Main script:
+- `scripts/eval_accuracy.py`
+
+Output files:
+- `results/accuracy_eval_<timestamp>.csv`
+- `results/accuracy_eval_<timestamp>.json`
+
+The CSV contains one row per benchmark item. The JSON contains:
+- run metadata
+- summary metrics
+- row-level results
+- raw orchestration outputs
+
+Typical columns include:
+- benchmark metadata: `id`, `category`, `question`, `ground_truth_answer`
+- answer data: `generated_answer`, `retrieved_context_count`
+- RAGAS metrics: `faithfulness`, `answer_relevancy`, `context_precision`, `context_recall`
+- aggregate metric: `overall_metric_score`
+- timings: `total_time_ms`, `processor_time_ms`, `retriever_time_ms`, `answerer_time_ms`, `evaluator_time_ms`
+- evaluator/orchestration: `evaluator_decision`, `retry_count`
+- error fields: `success`, `error_message`, `metric_error_message`
+
+Run the full benchmark:
+
+```bash
+.venv\Scripts\python.exe scripts\eval_accuracy.py
+```
+
+Run only one category:
+
+```bash
+.venv\Scripts\python.exe scripts\eval_accuracy.py --category accommodation
+```
+
+Run a subset of benchmark IDs:
+
+```bash
+.venv\Scripts\python.exe scripts\eval_accuracy.py --ids accommodation_01,accommodation_02
+```
+
+Run a shorter smoke test:
+
+```bash
+.venv\Scripts\python.exe scripts\eval_accuracy.py --limit 3
+```
+
+Useful options:
+- `--category <category>`
+- `--ids <comma,separated,ids>`
+- `--limit <n>`
+- `--top-k <n>`
+- `--output-dir <dir>`
+- `--save-mongo`
+- `--mongo-db <name>`
+- `--mongo-collection <name>`
+
+OpenAI requirements:
+- `OPENAI_API_KEY` or `OPEN_API_KEY` must be set to run RAGAS scoring.
+
+Runtime notes:
+- This script can take several minutes because it runs the orchestrator and then the RAGAS scoring layer.
+- The script prints the active RAGAS config at startup:
+  - LLM model
+  - embedding model
+  - question count
+
+Summary output includes:
+- tests run
+- batch total runtime
+- average faithfulness
+- average answer relevancy
+- average context precision
+- average context recall
+- average overall metric score
+- scored-row counts for each metric
+
+Interpreting `None` metrics:
+- If the orchestrator ran but all averages are `None`, check:
+  - `RAGAS warning:` in terminal output
+  - `ragas_error` in the JSON
+  - `metric_error_message` in row data
+  - scored-row counts such as `Scored rows for faithfulness: 0/30`
+- If scored-row counts are zero, the orchestrator likely succeeded but the RAGAS layer did not produce valid numeric outputs.
+
+Environment note about RAGAS:
+- The locally installed `ragas` version may expose both legacy and collections-based APIs.
+- In this repository, `scripts/eval_accuracy.py` is written to work with the installed environment and may use legacy-compatible metric objects and embedding wrappers internally.
+- This is why the script should be treated as the source of truth for the current project environment rather than generic RAGAS examples from external docs.
+
+### Evaluator effectiveness evaluation
+
+Purpose:
+- measure how the Evaluator and orchestration policy behave on the benchmark set
+- count `pass`, `revise`, `ask_clarification`, and `fallback` style outcomes
+- log retries, fallback usage, and timing
+
+Main script:
+- `scripts/eval_evaluator.py`
+
+Output files:
+- `results/evaluator_eval_<timestamp>.csv`
+- `results/evaluator_eval_<timestamp>.json`
+
+The CSV and JSON log one row per benchmark item and include fields such as:
+- `evaluator_decision`
+- `initial_verdict`
+- `final_verdict`
+- `effective_verdict`
+- `runtime_action`
+- `retry_count`
+- `fallback_used`
+- `clarification_requested`
+- `revised`
+- `retry_improved_result`
+- `final_answer`
+- answer/evaluator metadata
+- retrieval attempt metadata
+- timing breakdowns
+- success/error flags
+
+Run the full evaluator benchmark:
+
+```bash
+.venv\Scripts\python.exe scripts\eval_evaluator.py
+```
+
+Run a filtered category:
+
+```bash
+.venv\Scripts\python.exe scripts\eval_evaluator.py --category undergraduate_courses
+```
+
+Run a small subset:
+
+```bash
+.venv\Scripts\python.exe scripts\eval_evaluator.py --limit 5
+```
+
+Summary output includes:
+- batch total runtime
+- evaluator outcome counts
+- total tests run
+- successful vs errored runs
+- fallback count
+- clarification-requested count
+- revised count
+- average retry count
+- average total time
+
+This script is useful when you want to answer questions like:
+- How often did the evaluator pass answers immediately?
+- How often did retries happen?
+- How often did the system fall back to a safe response?
+- How much time does the evaluator/orchestration layer add?
+
+### Difference between `eval_accuracy.py` and `eval_evaluator.py`
+
+`eval_accuracy.py` is for answer quality:
+- evaluates the final answer against retrieved context and ground truth
+- uses RAGAS metrics
+- best for report-ready quality scoring
+
+`eval_evaluator.py` is for evaluator behavior:
+- logs evaluator and orchestration decisions
+- does not compute RAGAS metrics
+- best for analyzing retries, fallback logic, and clarification behavior
+
+Neither of these scripts uses `POST /query`. They both run the orchestrator directly inside Python.
+
+### Locust load testing
+
+Purpose:
+- test the live FastAPI endpoint under concurrent load
+- measure latency, throughput, and failures
+
+Main file:
+- `locustfile.py`
+
+What it does:
+- picks random benchmark questions from `scripts/benchmark_questions.py`
+- sends `POST /query` requests with:
+
+```json
+{
+  "query": "...",
+  "debug": false
+}
+```
+
+- marks failures when:
+  - status code is not `200`
+  - JSON is invalid
+  - API returns an error payload
+  - response has no `answer`
+
+#### 1) Start the backend
+
+Locust requires the API server to be running first.
+
+```bash
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Health check:
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+#### 2) Run Locust with the web UI
+
+```bash
+.venv\Scripts\locust.exe -f locustfile.py --host http://127.0.0.1:8000
+```
+
+Then open:
+- `http://127.0.0.1:8089`
+
+Suggested smoke settings:
+- users: `5`
+- spawn rate: `1`
+- run time: `2-5 minutes`
+
+Suggested heavier settings:
+- users: `20`
+- spawn rate: `2-4`
+- run time: `5-10 minutes`
+
+#### 3) Run Locust headless and save results
+
+Example:
+
+```bash
+.venv\Scripts\locust.exe -f locustfile.py --host http://127.0.0.1:8000 --headless --users 10 --spawn-rate 2 --run-time 5m --csv results\locust_query_test --html results\locust_query_test.html
+```
+
+This generates:
+- `results\locust_query_test_stats.csv`
+- `results\locust_query_test_stats_history.csv`
+- `results\locust_query_test_failures.csv`
+- `results\locust_query_test_exceptions.csv`
+- `results\locust_query_test.html`
+
+Recommended comparison set for reporting:
+
+```bash
+.venv\Scripts\locust.exe -f locustfile.py --host http://127.0.0.1:8000 --headless --users 5 --spawn-rate 1 --run-time 5m --csv results\locust_5_users --html results\locust_5_users.html
+.venv\Scripts\locust.exe -f locustfile.py --host http://127.0.0.1:8000 --headless --users 10 --spawn-rate 2 --run-time 5m --csv results\locust_10_users --html results\locust_10_users.html
+.venv\Scripts\locust.exe -f locustfile.py --host http://127.0.0.1:8000 --headless --users 20 --spawn-rate 4 --run-time 5m --csv results\locust_20_users --html results\locust_20_users.html
+```
+
+Useful Locust metrics for reports:
+- requests per second
+- median response time
+- 95th percentile response time
+- 99th percentile response time
+- failure rate
+
+### Which test should I use?
+
+Use `eval_accuracy.py` when you need:
+- answer-quality metrics
+- context/faithfulness scoring
+- exportable CSV/JSON results for report graphs
+
+Use `eval_evaluator.py` when you need:
+- evaluator decision counts
+- retry/fallback/clarification analysis
+- orchestration behavior summaries
+
+Use `locustfile.py` when you need:
+- API performance testing
+- concurrent user simulation
+- latency/throughput/failure measurements under load
+
+### Typical evaluation workflow
+
+1. Make sure MongoDB and OpenAI credentials are configured in `.env`.
+2. Run a small accuracy smoke test:
+
+```bash
+.venv\Scripts\python.exe scripts\eval_accuracy.py --limit 3
+```
+
+3. Run the full accuracy benchmark:
+
+```bash
+.venv\Scripts\python.exe scripts\eval_accuracy.py
+```
+
+4. Run the evaluator behavior benchmark:
+
+```bash
+.venv\Scripts\python.exe scripts\eval_evaluator.py
+```
+
+5. Start FastAPI and run the Locust comparison set if you also need performance data.
+
+6. Use the generated files in `results/` for graphs and write-up:
+- `accuracy_eval_*.csv`
+- `accuracy_eval_*.json`
+- `evaluator_eval_*.csv`
+- `evaluator_eval_*.json`
+- `locust_*_stats.csv`
+- `locust_*_stats_history.csv`
+- `locust_*_failures.csv`
+- `locust_*.html`
+
 ## Ingestion test commands
 
 ### 1) Local test for all JSON files
@@ -689,6 +1053,16 @@ What these validate:
 - Optional LLM-judge gating logic
 - One-retry cap for `revise`
 - Debug payload shape including `evaluator_run`
+
+## Planned evaluator improvements / TODOs
+
+These are sensible next-step improvements for the multi-agent runtime, but they are not fully implemented yet:
+
+1. Proper clarification memory across turns
+Current clarification behavior is mostly single-turn. A future improvement is to store pending clarification state so follow-up answers such as `Butler Court` can be linked back to the earlier unresolved question instead of relying only on lightweight frontend context hints.
+
+2. Stronger evaluator branch coverage and two-turn clarification benchmarking
+Current evaluator benchmarking records verdicts, retries, clarification requests, and fallback usage, but a future improvement is to make branch coverage more explicit for `revise`, `ask_clarification`, and `fallback`, and to add a two-turn clarification benchmark that checks whether the system handles clarification follow-ups correctly.
 
 ## Version numbers in ingestion records
 
