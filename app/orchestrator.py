@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -285,13 +286,21 @@ class QueryOrchestrator:
 
     def run(self, user_query: str, top_k_override: Optional[int] = None) -> Dict[str, Any]:
         """Plan, retrieve with fallback, return structured response."""
+        total_started = time.perf_counter()
+        processor_time_ms = 0.0
+        retriever_time_ms = 0.0
+        answerer_time_ms = 0.0
+        evaluator_time_ms = 0.0
         mongo_status = self._get_mongo_status()
         index_health = self._get_index_health()
 
+        processor_started = time.perf_counter()
         plan = self.processor.process(user_query)
         if top_k_override is not None:
             plan = plan.model_copy(update={"top_k": int(top_k_override)})
+        processor_time_ms += (time.perf_counter() - processor_started) * 1000.0
 
+        retriever_started = time.perf_counter()
         retrieval_bundle = self._retrieve_with_fallback(
             user_query=user_query,
             plan=plan,
@@ -308,18 +317,24 @@ class QueryOrchestrator:
             evidence=retrieval_bundle["results"],
             diag=retrieval_bundle["diagnostics"],
         )
+        retriever_time_ms += (time.perf_counter() - retriever_started) * 1000.0
 
+        answerer_started = time.perf_counter()
         draft_answer = self.answerer.answer(
             user_query=user_query,
             evidence_items=results,
             processor_plan=final_plan,
         )
+        answerer_time_ms += (time.perf_counter() - answerer_started) * 1000.0
+
+        evaluator_started = time.perf_counter()
         evaluation = self.evaluator.evaluate(
             user_query=user_query,
             retrieval_query=final_plan,
             evidence=results,
             draft_answer=draft_answer,
         )
+        evaluator_time_ms += (time.perf_counter() - evaluator_started) * 1000.0
         evaluation_history: List[Dict[str, Any]] = [evaluation.model_dump()]
 
         retries_used = 0
@@ -333,6 +348,7 @@ class QueryOrchestrator:
                 plan=final_plan,
                 suggested_filters=evaluation.suggested_filters,
             )
+            retriever_started = time.perf_counter()
             retry_bundle = self._retrieve_with_fallback(
                 user_query=user_query,
                 plan=revised_plan,
@@ -349,17 +365,24 @@ class QueryOrchestrator:
                 evidence=retry_bundle["results"],
                 diag=retry_bundle["diagnostics"],
             )
+            retriever_time_ms += (time.perf_counter() - retriever_started) * 1000.0
+
+            answerer_started = time.perf_counter()
             draft_answer = self.answerer.answer(
                 user_query=user_query,
                 evidence_items=results,
                 processor_plan=final_plan,
             )
+            answerer_time_ms += (time.perf_counter() - answerer_started) * 1000.0
+
+            evaluator_started = time.perf_counter()
             evaluation = self.evaluator.evaluate(
                 user_query=user_query,
                 retrieval_query=final_plan,
                 evidence=results,
                 draft_answer=draft_answer,
             )
+            evaluator_time_ms += (time.perf_counter() - evaluator_started) * 1000.0
             evaluation_history.append(evaluation.model_dump())
 
         effective_verdict = evaluation.verdict
@@ -379,6 +402,13 @@ class QueryOrchestrator:
         evaluator_run = evaluation.model_dump()
         evaluator_run["effective_verdict"] = effective_verdict
         evaluator_run["history"] = evaluation_history
+        timing_ms = {
+            "processor": round(processor_time_ms, 3),
+            "retriever": round(retriever_time_ms, 3),
+            "answerer": round(answerer_time_ms, 3),
+            "evaluator": round(evaluator_time_ms, 3),
+            "total": round((time.perf_counter() - total_started) * 1000.0, 3),
+        }
 
         return {
             "user_query": user_query,
@@ -403,6 +433,7 @@ class QueryOrchestrator:
                 "diagnostics": diag,
                 "evidence": [item.model_dump() for item in results],
             },
+            "timing_ms": timing_ms,
         }
 
     def _retrieve_with_fallback(
