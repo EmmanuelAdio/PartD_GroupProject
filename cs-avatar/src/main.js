@@ -386,7 +386,7 @@ function speakText(text) {
   setTimeout(speakNext, 10);
 }
 
-function appendMessage(role, text, fromVoice = false) {
+function appendMessage(role, text) {
   const message = document.createElement("article");
   message.className = `msg ${role}`;
 
@@ -405,9 +405,15 @@ function appendMessage(role, text, fromVoice = false) {
     editBtn.textContent = "✏️ Edit";
     editBtn.title = "Edit your question and resubmit.";
     editBtn.addEventListener("click", () => {
+      // clear any previous editing highlight
+      document.querySelectorAll(".msg.editing").forEach(m => m.classList.remove("editing"));
       pendingEditElements = [message];
+      message.classList.add("editing");
       textInput.value = text;
       textInput.focus();
+      textInput.classList.remove("input-flash");
+      void textInput.offsetWidth; // force reflow to restart animation
+      textInput.classList.add("input-flash");
       statusEl.textContent = "Edit your question and press Send or Enter.";
     });
     message.appendChild(editBtn);
@@ -486,7 +492,7 @@ async function handleSend(questionText, fromVoice = false) {
     pendingEditElements = null;
   }
 
-  appendMessage("me", q, fromVoice);
+  appendMessage("me", q);
   textInput.value = "";
 
   // check for canned responses first
