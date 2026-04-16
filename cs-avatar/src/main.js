@@ -399,13 +399,12 @@ function appendMessage(role, text, fromVoice = false) {
     role === "bot" ? renderAvatarMessage(text) : renderUserMessage(text);
   message.appendChild(content);
 
-  if (role === "me" && fromVoice) {
+  if (role === "me") {
     const editBtn = document.createElement("button");
     editBtn.className = "edit-btn";
     editBtn.textContent = "✏️ Edit";
-    editBtn.title = "Transcription wrong? Edit and resubmit.";
+    editBtn.title = "Edit your question and resubmit.";
     editBtn.addEventListener("click", () => {
-      // store this message for removal on resubmit; bot sibling resolved at send time
       pendingEditElements = [message];
       textInput.value = text;
       textInput.focus();
@@ -472,12 +471,18 @@ async function handleSend(questionText, fromVoice = false) {
     return;
   }
 
-  // remove original voice message + its bot response if user edited and resubmitted
+  // remove edited message and everything after it in the chat log
   if (pendingEditElements) {
     const [userMsg] = pendingEditElements;
-    const botMsg = userMsg?.nextElementSibling;
-    botMsg?.remove();
-    userMsg?.remove();
+    if (userMsg) {
+      const toRemove = [];
+      let el = userMsg;
+      while (el) {
+        toRemove.push(el);
+        el = el.nextElementSibling;
+      }
+      toRemove.forEach(n => n.remove());
+    }
     pendingEditElements = null;
   }
 
