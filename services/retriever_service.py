@@ -448,7 +448,14 @@ class RetrieverService:
                 )
             )
 
-        merged.sort(key=lambda item: item.score, reverse=True)
+        merged.sort(
+            key=lambda item: (
+                -float(item.score or 0.0),
+                str(item.source_id or ""),
+                int(item.order or 0),
+                str(item.chunk_id or ""),
+            )
+        )
         return merged[:top_k]
 
     def _accumulate_hit(

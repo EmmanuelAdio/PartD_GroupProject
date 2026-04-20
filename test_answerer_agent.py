@@ -359,6 +359,29 @@ def test_answerer_uses_deterministic_extreme_price_logic_even_with_llm_available
     assert "GBP 126.68" in result.answer
 
 
+def test_answerer_treats_cheapest_accommodation_as_implicit_price_extreme() -> None:
+    agent = AnswererAgent(
+        llm_service=_StubLLMService(
+            {
+                "answer": "The cheapest accommodation is The Holt at GBP 165.41 per week.",
+                "grounded": True,
+                "confidence": 1.0,
+                "citation_ids": [2],
+            }
+        )
+    )
+
+    result = agent.answer(
+        user_query="What is the cheapest accommodation?",
+        evidence_items=_sample_price_comparison_evidence(),
+    )
+
+    assert result.fallback_used is True
+    assert result.grounded is True
+    assert "Butler Court" in result.answer
+    assert "GBP 126.68" in result.answer
+
+
 def test_answerer_extreme_price_logic_recovers_names_across_split_chunks_and_handles_ties() -> None:
     agent = AnswererAgent(llm_service=None)
 
@@ -373,3 +396,18 @@ def test_answerer_extreme_price_logic_recovers_names_across_split_chunks_and_han
     assert "Faraday" in result.answer
     assert "Royce" in result.answer
     assert result.used_evidence_count == 2
+
+
+def test_answerer_prompt_omits_scores_and_orders_evidence_deterministically() -> None:
+    agent = AnswererAgent(llm_service=None)
+
+    prompt = agent._build_user_prompt(  # pylint: disable=protected-access
+        user_query="How much is Butler Court accommodation?",
+        processor_plan=None,
+        evidence=list(reversed(_sample_evidence())),
+    )
+
+    assert '"score"' not in prompt
+    assert prompt.index("room_types[0].prices[0].per_week_gbp: 126.68") < prompt.index(
+        "address: Butler Court Loughborough University LE11 3TS"
+    )

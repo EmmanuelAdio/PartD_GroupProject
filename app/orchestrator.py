@@ -723,7 +723,11 @@ class QueryOrchestrator:
             token in query_lc
             for token in ("price", "prices", "cost", "costs", "fee", "fees", "rent", "weekly", "per week")
         )
-        return is_accommodation and has_extreme and has_price_signal
+        has_accommodation_subject = any(
+            token in query_lc
+            for token in ("accommodation", "hall", "halls", "room", "rooms", "on-campus", "on campus")
+        )
+        return is_accommodation and has_extreme and (has_price_signal or has_accommodation_subject)
 
     def _get_mongo_status(self) -> Dict[str, Any]:
         doc_count = self.repo.collection.count_documents({})

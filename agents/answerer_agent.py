@@ -250,7 +250,8 @@ class AnswererAgent:
     ) -> str:
         plan_payload = processor_plan.model_dump() if processor_plan is not None else None
         evidence_payload = []
-        for idx, item in enumerate(evidence[: self.max_evidence_items], start=1):
+        selected_evidence = self._ordered_prompt_evidence(evidence)
+        for idx, item in enumerate(selected_evidence, start=1):
             evidence_payload.append(
                 {
                     "evidence_id": idx,
@@ -259,7 +260,6 @@ class AnswererAgent:
                     "section": item.section,
                     "domain": item.domain,
                     "entity_tags": item.entity_tags,
-                    "score": item.score,
                     "key_fields": item.metadata.get("key_fields", {}) if isinstance(item.metadata, dict) else {},
                     "salient_lines": self._select_salient_lines(user_query, item),
                     "text_excerpt": self._truncate_text_preserve_lines(item.text, self.max_chars_per_evidence),
@@ -854,7 +854,19 @@ class AnswererAgent:
             token in query_lc
             for token in ("price", "prices", "cost", "costs", "fee", "fees", "rent", "weekly", "per week")
         )
-        return has_extreme and has_price_signal
+        has_accommodation_subject = any(
+            token in query_lc
+            for token in (
+                "accommodation",
+                "hall",
+                "halls",
+                "room",
+                "rooms",
+                "on-campus",
+                "on campus",
+            )
+        )
+        return has_extreme and (has_price_signal or has_accommodation_subject)
 
     @staticmethod
     def _price_extreme_direction(user_query: str) -> Optional[str]:
@@ -864,6 +876,18 @@ class AnswererAgent:
         if any(token in query_lc for token in ("most expensive", "highest", "maximum", "priciest")):
             return "max"
         return None
+
+    def _ordered_prompt_evidence(self, evidence: Sequence[EvidenceItem]) -> List[EvidenceItem]:
+        selected = list(evidence[: self.max_evidence_items])
+        selected.sort(
+            key=lambda item: (
+                str(item.source_id or ""),
+                int(item.order or 0),
+                str(item.section or ""),
+                str(item.chunk_id or ""),
+            )
+        )
+        return selected
 
     def _collect_price_candidates(self, evidence: Sequence[EvidenceItem]) -> List[Dict[str, Any]]:
         hall_names: Dict[int, str] = {}

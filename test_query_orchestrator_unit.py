@@ -20,6 +20,20 @@ def test_query_orchestrator_expands_accommodation_price_comparisons() -> None:
     )
 
 
+def test_query_orchestrator_expands_cheapest_accommodation_without_explicit_price_words() -> None:
+    plan = RetrievalQuery(
+        query_text="What is the cheapest accommodation?",
+        top_k=8,
+        domain="accommodation",
+        domains=["accommodation"],
+    )
+
+    assert QueryOrchestrator._should_expand_accommodation_price_evidence(
+        "What is the cheapest accommodation?",
+        plan,
+    )
+
+
 def test_query_orchestrator_does_not_expand_simple_price_lookup() -> None:
     plan = RetrievalQuery(
         query_text="How much does Butler Court cost per week?",
