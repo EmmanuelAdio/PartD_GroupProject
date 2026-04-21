@@ -287,6 +287,7 @@ Available endpoints:
 - `POST /ingest/file`
 - `POST /ingest/payload`
 - `POST /query`
+- `POST /feedback`
 
 ### 7) Run avatar frontend (Vite)
 
@@ -306,6 +307,12 @@ Local chat startup flow:
 1. Start FastAPI on `127.0.0.1:8000`.
 2. Start Vite on `localhost:5173`.
 3. Open the Vite URL and send a chat message from the avatar UI.
+
+Avatar feedback behavior:
+- Query-backed answers show `Yes` / `No` feedback buttons.
+- `Yes` sends an acknowledgement to `POST /feedback` and does not retry.
+- `No` sends the original query plus the last answer to `POST /feedback`, shows `Trying again...`, and appends one improved retry answer when available.
+- Feedback retries are capped at one attempt per answer, so retry answers do not trigger another feedback retry loop.
 
 ## FastAPI endpoint usage
 
@@ -385,6 +392,47 @@ curl -X POST "http://127.0.0.1:8000/query" \
 - `retrieval_run.attempts_log`
 - `retrieval_run.evidence`
 - `retrieval_run.diagnostics`
+
+### Feedback endpoint
+
+1. Acknowledge a good answer without retrying:
+```bash
+curl -X POST "http://127.0.0.1:8000/feedback" \
+  -H "Content-Type: application/json" \
+  -d "{\"user_query\":\"How much is Butler Court accommodation?\",\"last_answer\":\"Butler Court costs GBP 126.68 per week.\",\"resolved\":true}"
+```
+
+2. Trigger a single feedback-driven retry:
+```bash
+curl -X POST "http://127.0.0.1:8000/feedback" \
+  -H "Content-Type: application/json" \
+  -d "{\"user_query\":\"Tell me about accommodation fees\",\"last_answer\":\"Accommodation costs vary.\",\"resolved\":false,\"reason\":\"missing_detail\"}"
+```
+
+Feedback contract:
+- Request fields:
+  - `user_query`
+  - `last_answer`
+  - `resolved`
+  - optional `reason`: `wrong_topic | too_vague | missing_detail | incorrect`
+- Response fields:
+  - `action`: `acknowledged | retried`
+  - `answer_payload`: `null` for acknowledgements, or the same minimal answer shape returned by `POST /query`
+
+How evaluator/orchestrator feedback retry works:
+- `resolved=false` starts from the original query, broadens retrieval modestly, and reuses evaluator outputs such as `suggested_filters`, `issues`, and `clarification_question`.
+- `wrong_topic` prefers evaluator-suggested retrieval focus.
+- `too_vague` prefers clarification when ambiguity is detected.
+- `missing_detail` broadens retrieval and tries for a more specific grounded answer.
+- `incorrect` uses a conservative policy: if the retried answer still is not clearly grounded and safe, the orchestrator returns the usual safe fallback.
+
+Feedback logging:
+- Best-effort feedback events are appended to `results/feedback_events.jsonl`.
+- Logging failures do not block the API response.
+
+Known limitations:
+- Feedback-driven retries are capped at one attempt.
+- The frontend does not yet expose a reason selector, so `reason` is API-ready but optional.
 
 ## Evaluation and load testing
 

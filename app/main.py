@@ -4,8 +4,9 @@ import argparse
 import json
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 try:
     from dotenv import load_dotenv
@@ -108,6 +109,42 @@ def _shape_query_response(result: Dict[str, Any], *, debug: bool) -> Dict[str, A
         "citations": answerer_run.get("citations", []),
     }
 
+
+def _feedback_log_path() -> Path:
+    return Path(__file__).resolve().parents[1] / "results" / "feedback_events.jsonl"
+
+
+def _feedback_retry_succeeded(result: Dict[str, Any]) -> bool:
+    decision = result.get("orchestration_decision", {}) if isinstance(result, dict) else {}
+    runtime_action = decision.get("runtime_action")
+    return runtime_action in {"pass", "ask_clarification"}
+
+
+def _log_feedback_event(
+    *,
+    user_query: str,
+    last_answer: str,
+    resolved: bool,
+    reason: Optional[str],
+    retry_succeeded: bool,
+) -> None:
+    try:
+        path = _feedback_log_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "query": user_query,
+            "last_answer": last_answer,
+            "resolved": bool(resolved),
+            "reason": reason,
+            "retry_succeeded": bool(retry_succeeded),
+        }
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        # Logging must never block the user-facing response path.
+        return
+
 if FastAPI is not None:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -149,6 +186,18 @@ if FastAPI is not None:
         query: str
         top_k: Optional[int] = None
         debug: bool = False
+
+    FeedbackReason = Literal["wrong_topic", "too_vague", "missing_detail", "incorrect"]
+
+    class FeedbackRequest(BaseModel):
+        user_query: str
+        last_answer: str
+        resolved: bool
+        reason: Optional[FeedbackReason] = None
+
+    class FeedbackResponse(BaseModel):
+        action: Literal["acknowledged", "retried"]
+        answer_payload: Optional[Dict[str, Any]] = None
 
     @app.get("/health")
     def health():
@@ -206,6 +255,42 @@ if FastAPI is not None:
                 top_k_override=req.top_k,
             )
             return _shape_query_response(result, debug=req.debug)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/feedback", response_model=FeedbackResponse)
+    def run_feedback(req: FeedbackRequest):
+        try:
+            if query_orchestrator is None:
+                raise RuntimeError("QueryOrchestrator is not ready.")
+
+            if req.resolved:
+                _log_feedback_event(
+                    user_query=req.user_query,
+                    last_answer=req.last_answer,
+                    resolved=req.resolved,
+                    reason=req.reason,
+                    retry_succeeded=False,
+                )
+                return FeedbackResponse(action="acknowledged", answer_payload=None)
+
+            result = query_orchestrator.run_with_feedback(
+                user_query=req.user_query,
+                last_answer=req.last_answer,
+                reason=req.reason,
+            )
+            answer_payload = _shape_query_response(result, debug=False)
+            _log_feedback_event(
+                user_query=req.user_query,
+                last_answer=req.last_answer,
+                resolved=req.resolved,
+                reason=req.reason,
+                retry_succeeded=_feedback_retry_succeeded(result),
+            )
+            return FeedbackResponse(
+                action="retried",
+                answer_payload=answer_payload,
+            )
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 

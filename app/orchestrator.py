@@ -277,6 +277,7 @@ class QueryOrchestrator:
         self.answerer = AnswererAgent(llm_model=answerer_model)
         self.evaluator = EvaluatorAgent(llm_model=answerer_model)
         self.max_revise_retries = 1
+        self.max_feedback_retries = 1
         self.retriever = RetrieverService(
             repo=self.repo,
             embedder=self.embedder,
@@ -287,54 +288,32 @@ class QueryOrchestrator:
     def run(self, user_query: str, top_k_override: Optional[int] = None) -> Dict[str, Any]:
         """Plan, retrieve with fallback, return structured response."""
         total_started = time.perf_counter()
-        processor_time_ms = 0.0
+        plan, processor_time_ms = self._plan_query(
+            user_query=user_query,
+            top_k_override=top_k_override,
+        )
         retriever_time_ms = 0.0
         answerer_time_ms = 0.0
         evaluator_time_ms = 0.0
         mongo_status = self._get_mongo_status()
         index_health = self._get_index_health()
-
-        processor_started = time.perf_counter()
-        plan = self.processor.process(user_query)
-        if top_k_override is not None:
-            plan = plan.model_copy(update={"top_k": int(top_k_override)})
-        processor_time_ms += (time.perf_counter() - processor_started) * 1000.0
-
-        retriever_started = time.perf_counter()
-        retrieval_bundle = self._retrieve_with_fallback(
+        cycle = self._run_answer_cycle(
             user_query=user_query,
             plan=plan,
             attempt_start=1,
             phase="initial",
         )
-        final_plan = retrieval_bundle["plan_used"]
-        attempts_log = list(retrieval_bundle["attempts_log"])
-        final_attempt_used = retrieval_bundle["attempt_used"]
-
-        results, diag, retrieved_result_count = self._prepare_answer_inputs(
-            user_query=user_query,
-            plan=final_plan,
-            evidence=retrieval_bundle["results"],
-            diag=retrieval_bundle["diagnostics"],
-        )
-        retriever_time_ms += (time.perf_counter() - retriever_started) * 1000.0
-
-        answerer_started = time.perf_counter()
-        draft_answer = self.answerer.answer(
-            user_query=user_query,
-            evidence_items=results,
-            processor_plan=final_plan,
-        )
-        answerer_time_ms += (time.perf_counter() - answerer_started) * 1000.0
-
-        evaluator_started = time.perf_counter()
-        evaluation = self.evaluator.evaluate(
-            user_query=user_query,
-            retrieval_query=final_plan,
-            evidence=results,
-            draft_answer=draft_answer,
-        )
-        evaluator_time_ms += (time.perf_counter() - evaluator_started) * 1000.0
+        retriever_time_ms += cycle["timing_ms"]["retriever"]
+        answerer_time_ms += cycle["timing_ms"]["answerer"]
+        evaluator_time_ms += cycle["timing_ms"]["evaluator"]
+        final_plan = cycle["plan_used"]
+        attempts_log = list(cycle["attempts_log"])
+        final_attempt_used = cycle["attempt_used"]
+        results = cycle["evidence"]
+        diag = cycle["diagnostics"]
+        retrieved_result_count = cycle["retrieved_result_count"]
+        draft_answer = cycle["draft_answer"]
+        evaluation = cycle["evaluation"]
         evaluation_history: List[Dict[str, Any]] = [evaluation.model_dump()]
 
         retries_used = 0
@@ -348,56 +327,32 @@ class QueryOrchestrator:
                 plan=final_plan,
                 suggested_filters=evaluation.suggested_filters,
             )
-            retriever_started = time.perf_counter()
-            retry_bundle = self._retrieve_with_fallback(
+            cycle = self._run_answer_cycle(
                 user_query=user_query,
                 plan=revised_plan,
                 attempt_start=len(attempts_log) + 1,
                 phase=f"revise_{retries_used}",
             )
-            final_plan = retry_bundle["plan_used"]
-            final_attempt_used = retry_bundle["attempt_used"]
-            attempts_log.extend(retry_bundle["attempts_log"])
-
-            results, diag, retrieved_result_count = self._prepare_answer_inputs(
-                user_query=user_query,
-                plan=final_plan,
-                evidence=retry_bundle["results"],
-                diag=retry_bundle["diagnostics"],
-            )
-            retriever_time_ms += (time.perf_counter() - retriever_started) * 1000.0
-
-            answerer_started = time.perf_counter()
-            draft_answer = self.answerer.answer(
-                user_query=user_query,
-                evidence_items=results,
-                processor_plan=final_plan,
-            )
-            answerer_time_ms += (time.perf_counter() - answerer_started) * 1000.0
-
-            evaluator_started = time.perf_counter()
-            evaluation = self.evaluator.evaluate(
-                user_query=user_query,
-                retrieval_query=final_plan,
-                evidence=results,
-                draft_answer=draft_answer,
-            )
-            evaluator_time_ms += (time.perf_counter() - evaluator_started) * 1000.0
+            retriever_time_ms += cycle["timing_ms"]["retriever"]
+            answerer_time_ms += cycle["timing_ms"]["answerer"]
+            evaluator_time_ms += cycle["timing_ms"]["evaluator"]
+            final_plan = cycle["plan_used"]
+            final_attempt_used = cycle["attempt_used"]
+            attempts_log.extend(cycle["attempts_log"])
+            results = cycle["evidence"]
+            diag = cycle["diagnostics"]
+            retrieved_result_count = cycle["retrieved_result_count"]
+            draft_answer = cycle["draft_answer"]
+            evaluation = cycle["evaluation"]
             evaluation_history.append(evaluation.model_dump())
 
-        effective_verdict = evaluation.verdict
-        if effective_verdict == "revise" and retries_used >= self.max_revise_retries:
-            effective_verdict = "fallback"
-
-        runtime_action = self._decision_for_verdict(effective_verdict)
-        final_answer = draft_answer
-        if runtime_action == "ask_clarification":
-            final_answer = self._build_clarification_answer(
-                evaluation=evaluation,
-                evidence=results,
-            )
-        elif runtime_action == "fallback":
-            final_answer = self._build_safe_fallback_answer(evidence=results)
+        final_answer, effective_verdict, runtime_action = self._finalize_runtime_answer(
+            evaluation=evaluation,
+            draft_answer=draft_answer,
+            evidence=results,
+            retries_used=retries_used,
+            max_retries=self.max_revise_retries,
+        )
 
         evaluator_run = evaluation.model_dump()
         evaluator_run["effective_verdict"] = effective_verdict
@@ -434,6 +389,260 @@ class QueryOrchestrator:
                 "evidence": [item.model_dump() for item in results],
             },
             "timing_ms": timing_ms,
+        }
+
+    def run_with_feedback(
+        self,
+        *,
+        user_query: str,
+        last_answer: str,
+        reason: Optional[str] = None,
+        top_k_override: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        total_started = time.perf_counter()
+        retriever_time_ms = 0.0
+        answerer_time_ms = 0.0
+        evaluator_time_ms = 0.0
+        mongo_status = self._get_mongo_status()
+        index_health = self._get_index_health()
+
+        base_plan, processor_time_ms = self._plan_query(
+            user_query=user_query,
+            top_k_override=top_k_override,
+        )
+        broadened_plan = base_plan.model_copy(
+            update={
+                "top_k": self._feedback_top_k(
+                    base_plan.top_k,
+                    top_k_override=top_k_override,
+                )
+            }
+        )
+
+        initial_retrieval = self._retrieve_prepared_evidence(
+            user_query=user_query,
+            plan=broadened_plan,
+            attempt_start=1,
+            phase="feedback_initial",
+        )
+        retriever_time_ms += initial_retrieval["timing_ms"]["retriever"]
+        evaluation_input = self._coerce_feedback_draft_answer(last_answer)
+        initial_feedback_eval, evaluation_time = self._evaluate_answer(
+            user_query=user_query,
+            plan=initial_retrieval["plan_used"],
+            evidence=initial_retrieval["evidence"],
+            draft_answer=evaluation_input,
+        )
+        evaluator_time_ms += evaluation_time
+        evaluation_history: List[Dict[str, Any]] = [initial_feedback_eval.model_dump()]
+
+        if self._should_clarify_on_feedback(
+            evaluation=initial_feedback_eval,
+            reason=reason,
+        ):
+            final_answer = self._build_clarification_answer(
+                evaluation=initial_feedback_eval,
+                evidence=initial_retrieval["evidence"],
+            )
+            effective_verdict = "ask_clarification"
+            runtime_action = "ask_clarification"
+            final_plan = initial_retrieval["plan_used"]
+            attempts_log = list(initial_retrieval["attempts_log"])
+            final_attempt_used = initial_retrieval["attempt_used"]
+            results = initial_retrieval["evidence"]
+            diag = initial_retrieval["diagnostics"]
+            retrieved_result_count = initial_retrieval["retrieved_result_count"]
+            feedback_retry_used = 0
+            final_evaluation = initial_feedback_eval
+        else:
+            revised_plan = self._build_feedback_retry_plan(
+                base_plan=broadened_plan,
+                current_plan=initial_retrieval["plan_used"],
+                evaluation=initial_feedback_eval,
+                reason=reason,
+            )
+            retry_cycle = self._run_answer_cycle(
+                user_query=user_query,
+                plan=revised_plan,
+                attempt_start=len(initial_retrieval["attempts_log"]) + 1,
+                phase="feedback_retry",
+            )
+            retriever_time_ms += retry_cycle["timing_ms"]["retriever"]
+            answerer_time_ms += retry_cycle["timing_ms"]["answerer"]
+            evaluator_time_ms += retry_cycle["timing_ms"]["evaluator"]
+            evaluation_history.append(retry_cycle["evaluation"].model_dump())
+
+            final_answer, effective_verdict, runtime_action = self._finalize_runtime_answer(
+                evaluation=retry_cycle["evaluation"],
+                draft_answer=retry_cycle["draft_answer"],
+                evidence=retry_cycle["evidence"],
+                retries_used=self.max_feedback_retries,
+                max_retries=self.max_feedback_retries,
+                conservative_fallback=(reason == "incorrect"),
+            )
+            final_plan = retry_cycle["plan_used"]
+            attempts_log = list(initial_retrieval["attempts_log"]) + list(retry_cycle["attempts_log"])
+            final_attempt_used = retry_cycle["attempt_used"]
+            results = retry_cycle["evidence"]
+            diag = retry_cycle["diagnostics"]
+            retrieved_result_count = retry_cycle["retrieved_result_count"]
+            feedback_retry_used = 1
+            final_evaluation = retry_cycle["evaluation"]
+
+        evaluator_run = final_evaluation.model_dump()
+        evaluator_run["effective_verdict"] = effective_verdict
+        evaluator_run["history"] = evaluation_history
+        timing_ms = {
+            "processor": round(processor_time_ms, 3),
+            "retriever": round(retriever_time_ms, 3),
+            "answerer": round(answerer_time_ms, 3),
+            "evaluator": round(evaluator_time_ms, 3),
+            "total": round((time.perf_counter() - total_started) * 1000.0, 3),
+        }
+
+        return {
+            "user_query": user_query,
+            "mongo_status": mongo_status,
+            "index_health": index_health,
+            "processor_plan": final_plan.model_dump(),
+            "answerer_run": final_answer.model_dump(),
+            "evaluator_run": evaluator_run,
+            "orchestration_decision": {
+                "initial_verdict": evaluation_history[0].get("verdict"),
+                "final_verdict": final_evaluation.verdict,
+                "effective_verdict": effective_verdict,
+                "runtime_action": runtime_action,
+                "feedback_retry_used": feedback_retry_used,
+                "max_feedback_retries": self.max_feedback_retries,
+                "reason": reason,
+            },
+            "retrieval_run": {
+                "attempt_used": final_attempt_used,
+                "attempts_log": attempts_log,
+                "result_count": len(results),
+                "retrieved_result_count": retrieved_result_count,
+                "diagnostics": diag,
+                "evidence": [item.model_dump() for item in results],
+            },
+            "timing_ms": timing_ms,
+        }
+
+    def _plan_query(
+        self,
+        *,
+        user_query: str,
+        top_k_override: Optional[int] = None,
+    ) -> tuple[RetrievalQuery, float]:
+        processor_started = time.perf_counter()
+        plan = self.processor.process(user_query)
+        if top_k_override is not None:
+            plan = plan.model_copy(update={"top_k": int(top_k_override)})
+        processor_time_ms = (time.perf_counter() - processor_started) * 1000.0
+        return plan, processor_time_ms
+
+    def _retrieve_prepared_evidence(
+        self,
+        *,
+        user_query: str,
+        plan: RetrievalQuery,
+        attempt_start: int,
+        phase: str,
+    ) -> Dict[str, Any]:
+        retriever_started = time.perf_counter()
+        retrieval_bundle = self._retrieve_with_fallback(
+            user_query=user_query,
+            plan=plan,
+            attempt_start=attempt_start,
+            phase=phase,
+        )
+        plan_used = retrieval_bundle["plan_used"]
+        evidence, diag, retrieved_result_count = self._prepare_answer_inputs(
+            user_query=user_query,
+            plan=plan_used,
+            evidence=retrieval_bundle["results"],
+            diag=retrieval_bundle["diagnostics"],
+        )
+        retriever_time_ms = (time.perf_counter() - retriever_started) * 1000.0
+        return {
+            "plan_used": plan_used,
+            "attempts_log": list(retrieval_bundle["attempts_log"]),
+            "attempt_used": retrieval_bundle["attempt_used"],
+            "evidence": evidence,
+            "diagnostics": diag,
+            "retrieved_result_count": retrieved_result_count,
+            "timing_ms": {
+                "retriever": retriever_time_ms,
+            },
+        }
+
+    def _generate_answer(
+        self,
+        *,
+        user_query: str,
+        plan: RetrievalQuery,
+        evidence: List[EvidenceItem],
+    ) -> tuple[AnswerResult, float]:
+        answerer_started = time.perf_counter()
+        draft_answer = self.answerer.answer(
+            user_query=user_query,
+            evidence_items=evidence,
+            processor_plan=plan,
+        )
+        answerer_time_ms = (time.perf_counter() - answerer_started) * 1000.0
+        return draft_answer, answerer_time_ms
+
+    def _evaluate_answer(
+        self,
+        *,
+        user_query: str,
+        plan: RetrievalQuery,
+        evidence: List[EvidenceItem],
+        draft_answer: AnswerResult,
+    ) -> tuple[EvaluationResult, float]:
+        evaluator_started = time.perf_counter()
+        evaluation = self.evaluator.evaluate(
+            user_query=user_query,
+            retrieval_query=plan,
+            evidence=evidence,
+            draft_answer=draft_answer,
+        )
+        evaluator_time_ms = (time.perf_counter() - evaluator_started) * 1000.0
+        return evaluation, evaluator_time_ms
+
+    def _run_answer_cycle(
+        self,
+        *,
+        user_query: str,
+        plan: RetrievalQuery,
+        attempt_start: int,
+        phase: str,
+    ) -> Dict[str, Any]:
+        retrieval = self._retrieve_prepared_evidence(
+            user_query=user_query,
+            plan=plan,
+            attempt_start=attempt_start,
+            phase=phase,
+        )
+        draft_answer, answerer_time_ms = self._generate_answer(
+            user_query=user_query,
+            plan=retrieval["plan_used"],
+            evidence=retrieval["evidence"],
+        )
+        evaluation, evaluator_time_ms = self._evaluate_answer(
+            user_query=user_query,
+            plan=retrieval["plan_used"],
+            evidence=retrieval["evidence"],
+            draft_answer=draft_answer,
+        )
+        return {
+            **retrieval,
+            "draft_answer": draft_answer,
+            "evaluation": evaluation,
+            "timing_ms": {
+                "retriever": retrieval["timing_ms"]["retriever"],
+                "answerer": answerer_time_ms,
+                "evaluator": evaluator_time_ms,
+            },
         }
 
     def _retrieve_with_fallback(
@@ -549,6 +758,123 @@ class QueryOrchestrator:
             "entity_tags": merged_tags,
         }
         return plan.model_copy(update=update)
+
+    @staticmethod
+    def _finalize_runtime_answer(
+        *,
+        evaluation: EvaluationResult,
+        draft_answer: AnswerResult,
+        evidence: List[EvidenceItem],
+        retries_used: int,
+        max_retries: int,
+        conservative_fallback: bool = False,
+    ) -> tuple[AnswerResult, str, str]:
+        effective_verdict = evaluation.verdict
+        if effective_verdict == "revise" and retries_used >= max_retries:
+            effective_verdict = "fallback"
+
+        if conservative_fallback and effective_verdict != "ask_clarification":
+            if not (evaluation.verdict == "pass" and evaluation.grounded and evaluation.relevant and evaluation.safe):
+                effective_verdict = "fallback"
+
+        runtime_action = QueryOrchestrator._decision_for_verdict(effective_verdict)
+        final_answer = draft_answer
+        if runtime_action == "ask_clarification":
+            final_answer = QueryOrchestrator._build_clarification_answer(
+                evaluation=evaluation,
+                evidence=evidence,
+            )
+        elif runtime_action == "fallback":
+            final_answer = QueryOrchestrator._build_safe_fallback_answer(evidence=evidence)
+        return final_answer, effective_verdict, runtime_action
+
+    @staticmethod
+    def _coerce_feedback_draft_answer(last_answer: str) -> AnswerResult:
+        return AnswerResult(
+            answer=QueryOrchestrator._clean_text(last_answer),
+            grounded=False,
+            confidence=0.0,
+            citations=[],
+            used_evidence_count=0,
+            fallback_used=False,
+        )
+
+    @staticmethod
+    def _should_clarify_on_feedback(
+        *,
+        evaluation: EvaluationResult,
+        reason: Optional[str],
+    ) -> bool:
+        if evaluation.verdict == "ask_clarification":
+            return True
+        return reason == "too_vague" and bool(evaluation.clarification_question)
+
+    @staticmethod
+    def _feedback_top_k(base_top_k: int, *, top_k_override: Optional[int] = None) -> int:
+        broadened = min(12, int(base_top_k) + 2)
+        if top_k_override is not None:
+            return max(1, min(broadened, int(top_k_override)))
+        return max(1, broadened)
+
+    @staticmethod
+    def _replace_plan_filters(
+        *,
+        plan: RetrievalQuery,
+        filters: Optional[Dict[str, Any]],
+    ) -> RetrievalQuery:
+        payload = dict(filters or {})
+        domains = QueryOrchestrator._dedupe_values(
+            QueryOrchestrator._coerce_str_list(payload.get("domains"))
+        )
+        sections = QueryOrchestrator._dedupe_values(
+            QueryOrchestrator._coerce_str_list(payload.get("sections"))
+        )
+        tags = QueryOrchestrator._dedupe_values(
+            QueryOrchestrator._coerce_str_list(payload.get("entity_tags"))
+        )
+        update: Dict[str, Any] = {}
+        if domains:
+            update["domain"] = domains[0]
+            update["domains"] = domains
+        if sections:
+            update["section"] = sections[0]
+            update["sections"] = sections
+        if tags:
+            update["entity_tags"] = tags
+        if "top_k" in payload:
+            update["top_k"] = max(1, min(50, int(payload["top_k"])))
+        return plan.model_copy(update=update) if update else plan
+
+    @staticmethod
+    def _build_feedback_retry_plan(
+        *,
+        base_plan: RetrievalQuery,
+        current_plan: RetrievalQuery,
+        evaluation: EvaluationResult,
+        reason: Optional[str],
+    ) -> RetrievalQuery:
+        suggested_filters = evaluation.suggested_filters or {}
+        if reason == "wrong_topic":
+            retry_plan = QueryOrchestrator._replace_plan_filters(
+                plan=base_plan,
+                filters=suggested_filters,
+            )
+        else:
+            retry_plan = QueryOrchestrator._apply_evaluator_suggested_filters(
+                plan=current_plan,
+                suggested_filters=suggested_filters,
+            )
+
+        if reason == "missing_detail":
+            retry_plan = retry_plan.model_copy(
+                update={"top_k": min(12, retry_plan.top_k + 2)}
+            )
+        elif reason == "incorrect":
+            retry_plan = retry_plan.model_copy(
+                update={"top_k": min(12, max(base_plan.top_k, retry_plan.top_k))}
+            )
+
+        return retry_plan
 
     @staticmethod
     def _build_clarification_answer(

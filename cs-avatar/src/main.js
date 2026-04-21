@@ -5,6 +5,10 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import MarkdownIt from "markdown-it";
 import DOMPurify from "dompurify";
+import {
+  FRIENDLY_FEEDBACK_ERROR,
+  createFeedbackRow,
+} from "./feedback.js";
 
 const scene = new THREE.Scene();
 
@@ -196,6 +200,7 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
 ).replace(/\/+$/, "");
 const QUERY_ENDPOINT = `${API_BASE_URL}/query`;
+const FEEDBACK_ENDPOINT = `${API_BASE_URL}/feedback`;
 
 let isSending = false;
 let recognition = null;
@@ -293,42 +298,6 @@ function renderAvatarMessage(markdownText) {
   return content;
 }
 
-function createFeedbackRow(text) {
-  const feedbackRow = document.createElement("div");
-  feedbackRow.className = "feedback-row";
-
-  const label = document.createElement("span");
-  label.className = "feedback-label";
-  label.textContent = "Was your question answered?";
-
-  const yesBtn = document.createElement("button");
-  yesBtn.className = "feedback-btn feedback-yes";
-  yesBtn.textContent = "Yes";
-
-  const noBtn = document.createElement("button");
-  noBtn.className = "feedback-btn feedback-no";
-  noBtn.textContent = "No";
-
-  function handleFeedback(answered) {
-    yesBtn.disabled = true;
-    noBtn.disabled = true;
-    feedbackRow.innerHTML = answered
-      ? `<span class="feedback-thanks">Glad we could help!</span>`
-      : `<span class="feedback-thanks">Sorry about that \u2014 we'll try to improve.</span>`;
-    console.log("Feedback:", answered ? "answered" : "not answered", "for:", text);
-    // TODO: send feedback to your backend
-    // fetch("/api/feedback", { method: "POST", body: JSON.stringify({ answer: text, resolved: answered }) });
-  }
-
-  yesBtn.addEventListener("click", () => handleFeedback(true));
-  noBtn.addEventListener("click", () => handleFeedback(false));
-
-  feedbackRow.appendChild(label);
-  feedbackRow.appendChild(yesBtn);
-  feedbackRow.appendChild(noBtn);
-  return feedbackRow;
-}
-
 let cachedVoice = null;
 function loadPreferredVoice() {
   const voices = window.speechSynthesis.getVoices();
@@ -386,7 +355,8 @@ function speakText(text) {
   setTimeout(speakNext, 10);
 }
 
-function appendMessage(role, text) {
+function appendMessage(role, text, options = {}) {
+  const { allowFeedback = false, feedbackContext = null } = options;
   const message = document.createElement("article");
   message.className = `msg ${role}`;
 
@@ -419,8 +389,33 @@ function appendMessage(role, text) {
     message.appendChild(editBtn);
   }
 
-  if (role === "bot") {
-    message.appendChild(createFeedbackRow(text));
+  if (
+    role === "bot" &&
+    allowFeedback &&
+    feedbackContext &&
+    feedbackContext.userQuery &&
+    feedbackContext.answerText
+  ) {
+    message.appendChild(
+      createFeedbackRow({
+        userQuery: feedbackContext.userQuery,
+        answerText: feedbackContext.answerText,
+        feedbackEndpoint: FEEDBACK_ENDPOINT,
+        onAcknowledge: () => {
+          statusEl.textContent = "Thanks for the feedback.";
+        },
+        onRetryAnswer: (retryAnswer) => {
+          lastAnswer = retryAnswer;
+          appendMessage("bot", retryAnswer);
+          speakText(retryAnswer);
+          statusEl.textContent = "Retry answer received. Ask another question any time.";
+        },
+        onRetryError: (fallbackMessage = FRIENDLY_FEEDBACK_ERROR) => {
+          appendMessage("bot", fallbackMessage);
+          statusEl.textContent = fallbackMessage;
+        },
+      })
+    );
   }
 
   chatLog.appendChild(message);
@@ -539,7 +534,13 @@ async function handleSend(questionText, fromVoice = false) {
         : "I could not generate an answer from the backend.";
     lastAnswer = answer;
     hideThinking();
-    appendMessage("bot", answer);
+    appendMessage("bot", answer, {
+      allowFeedback: true,
+      feedbackContext: {
+        userQuery: q,
+        answerText: answer,
+      },
+    });
     speakText(answer);
     statusEl.textContent = "Answer received. Ask another question any time.";
   } catch (error) {
