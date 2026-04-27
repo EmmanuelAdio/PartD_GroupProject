@@ -257,6 +257,68 @@ class QueryOrchestrator:
       3. Bare query — raw user input, no filters at all
     """
 
+    # Lightweight pre-checks run before retrieval/generation.
+    # Each entry is (lowercase_substring, reason_code).
+    # Order matters: first match wins.
+    _SAFETY_PATTERNS: List[tuple] = [
+        # Explicit instruction to fabricate or bypass the knowledge base
+        ("make up",                         "instruction_to_guess_or_ignore_evidence"),
+        ("just guess",                      "instruction_to_guess_or_ignore_evidence"),
+        ("ignore your data",                "instruction_to_guess_or_ignore_evidence"),
+        ("ignore the evidence",             "instruction_to_guess_or_ignore_evidence"),
+        ("even if the evidence is missing", "instruction_to_guess_or_ignore_evidence"),
+        ("even if you don't know",          "instruction_to_guess_or_ignore_evidence"),
+        ("even if evidence is missing",     "instruction_to_guess_or_ignore_evidence"),
+        # Private or confidential data requests
+        ("confidential",                    "private_information_request"),
+        ("medical history",                 "private_information_request"),
+        ("private data",                    "private_information_request"),
+        ("student data",                    "private_information_request"),
+        ("personal data",                   "private_information_request"),
+        # Future price forecasts (knowledge base only covers current data)
+        (" 2030",                           "unsupported_future_claim"),
+        (" 2031",                           "unsupported_future_claim"),
+        (" 2032",                           "unsupported_future_claim"),
+        (" 2033",                           "unsupported_future_claim"),
+        (" 2034",                           "unsupported_future_claim"),
+        (" 2035",                           "unsupported_future_claim"),
+        ("future prices",                   "unsupported_future_claim"),
+        ("will prices be",                  "unsupported_future_claim"),
+        ("will the price",                  "unsupported_future_claim"),
+        ("price forecast",                  "unsupported_future_claim"),
+        # Requests for admissions guarantees
+        ("can you guarantee",               "guarantee_request"),
+        ("guarantee i'll",                  "guarantee_request"),
+        ("guarantee i will",                "guarantee_request"),
+        ("guaranteed admission",            "guarantee_request"),
+        ("guaranteed entry",                "guarantee_request"),
+        ("guarantee my place",              "guarantee_request"),
+    ]
+
+    _SAFETY_MESSAGES: Dict[str, str] = {
+        "instruction_to_guess_or_ignore_evidence": (
+            "I can only answer using verified information from the university knowledge base. "
+            "I'm unable to make up, guess, or bypass the available evidence. "
+            "Please ask a specific question and I'll do my best to help."
+        ),
+        "private_information_request": (
+            "I can't help with private, confidential, or personal information. "
+            "I can only use publicly available, verified university information. "
+            "For sensitive enquiries, please contact the university directly or speak to a member of staff."
+        ),
+        "unsupported_future_claim": (
+            "I don't have information about future prices or forecasts — my knowledge covers current, "
+            "verified university data only. "
+            "For the most up-to-date information please check the official Loughborough University website: "
+            "https://www.lboro.ac.uk/"
+        ),
+        "guarantee_request": (
+            "I'm not able to make guarantees about admissions or outcomes. "
+            "Entry decisions are made by the Admissions team based on your individual application. "
+            "For admissions guidance please visit: https://www.lboro.ac.uk/study/undergraduate/apply/"
+        ),
+    }
+
     def __init__(
         self,
         mongo_db: str = "open_day_knowledge",
@@ -287,6 +349,9 @@ class QueryOrchestrator:
 
     def run(self, user_query: str, top_k_override: Optional[int] = None) -> Dict[str, Any]:
         """Plan, retrieve with fallback, return structured response."""
+        guard_triggered, guard_reason = self._safety_guard_check(user_query)
+        if guard_triggered:
+            return self._safety_guard_response(user_query, guard_reason)
         total_started = time.perf_counter()
         plan, processor_time_ms = self._plan_query(
             user_query=user_query,
@@ -399,6 +464,9 @@ class QueryOrchestrator:
         reason: Optional[str] = None,
         top_k_override: Optional[int] = None,
     ) -> Dict[str, Any]:
+        guard_triggered, guard_reason = self._safety_guard_check(user_query)
+        if guard_triggered:
+            return self._safety_guard_response(user_query, guard_reason)
         total_started = time.perf_counter()
         retriever_time_ms = 0.0
         answerer_time_ms = 0.0
@@ -908,6 +976,87 @@ class QueryOrchestrator:
             used_evidence_count=len(citations),
             fallback_used=True,
         )
+
+    @staticmethod
+    def _safety_guard_check(user_query: str) -> tuple:
+        """Return (triggered, reason_code) if the query matches a safety pattern."""
+        normalised = (
+            user_query.lower()
+            .replace("’", "'")  # curly right apostrophe → straight
+            .replace("‘", "'")  # curly left apostrophe → straight
+        )
+        for pattern, reason_code in QueryOrchestrator._SAFETY_PATTERNS:
+            if pattern in normalised:
+                return True, reason_code
+        return False, ""
+
+    @staticmethod
+    def _build_safety_guard_answer(reason_code: str) -> AnswerResult:
+        message = QueryOrchestrator._SAFETY_MESSAGES.get(
+            reason_code,
+            "I don't have enough verified information to answer that. "
+            "Please check the official university website or ask a member of staff.",
+        )
+        return AnswerResult(
+            answer=message,
+            grounded=False,
+            confidence=0.0,
+            citations=[],
+            used_evidence_count=0,
+            fallback_used=True,
+        )
+
+    def _safety_guard_response(self, user_query: str, guard_reason: str) -> Dict[str, Any]:
+        """Full response dict returned when the safety guard fires — same shape as run()."""
+        started = time.perf_counter()
+        answer = self._build_safety_guard_answer(guard_reason)
+        total_ms = round((time.perf_counter() - started) * 1000.0, 3)
+        return {
+            "user_query": user_query,
+            "mongo_status": self._get_mongo_status(),
+            "index_health": self._get_index_health(),
+            "processor_plan": RetrievalQuery(query_text=user_query).model_dump(),
+            "answerer_run": answer.model_dump(),
+            "evaluator_run": {
+                "verdict": "fallback",
+                "effective_verdict": "fallback",
+                "grounded": False,
+                "relevant": False,
+                "clear": True,
+                "safe": True,
+                "issues": [guard_reason],
+                "suggested_action": None,
+                "suggested_filters": None,
+                "clarification_question": None,
+                "notes": f"safety_guard_triggered: {guard_reason}",
+                "history": [],
+            },
+            "orchestration_decision": {
+                "initial_verdict": "fallback",
+                "final_verdict": "fallback",
+                "effective_verdict": "fallback",
+                "runtime_action": "fallback",
+                "revise_retries_used": 0,
+                "max_revise_retries": self.max_revise_retries,
+                "safety_guard_triggered": True,
+                "safety_guard_reason": guard_reason,
+            },
+            "retrieval_run": {
+                "attempt_used": None,
+                "attempts_log": [],
+                "result_count": 0,
+                "retrieved_result_count": 0,
+                "diagnostics": {"safety_guard": guard_reason},
+                "evidence": [],
+            },
+            "timing_ms": {
+                "processor": 0.0,
+                "retriever": 0.0,
+                "answerer": 0.0,
+                "evaluator": 0.0,
+                "total": total_ms,
+            },
+        }
 
     @staticmethod
     def _first_url_citation(evidence: List[EvidenceItem]) -> List[AnswerCitation]:
