@@ -253,12 +253,11 @@ class RetrieverService:
         metadata_filter: Dict[str, Any],
         candidate_k: int,
     ) -> List[Dict[str, Any]]:
-        """Atlas Search path.
+        """Atlas Search (lexical) retrieval path.
 
-        Placeholder note:
-        Atlas Search index mappings and filter clauses are deployment-specific.
-        If this returns no hits/errors in your environment, tune the index name and
-        filter clauses in `_build_atlas_filter_clauses`.
+        Index mappings and filter clauses are deployment-specific.
+        If this returns no results or errors, verify the index name and
+        filter clauses in `_build_atlas_filter_clauses` match the Atlas deployment.
         """
         try:
             compound: Dict[str, Any] = {

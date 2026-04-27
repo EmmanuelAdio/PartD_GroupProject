@@ -23,7 +23,12 @@ except ImportError:  # pragma: no cover
 
 
 class MongoRepo:
-    """MongoDB persistence adapter for chunk records."""
+    """MongoDB persistence adapter for chunk records and ingestion manifests.
+
+    Provides upsert, query, and delete operations for `ChunkRecord` documents
+    and tracks per-source ingestion state via a manifest collection so the
+    orchestrator can skip re-embedding unchanged sources.
+    """
 
     def __init__(
         self,
@@ -74,12 +79,25 @@ class MongoRepo:
             raise RuntimeError(self._format_connection_error(exc)) from exc
 
     def ping(self) -> None:
+        """Verify connectivity by issuing a lightweight admin ping.
+
+        Raises:
+            RuntimeError: If the server cannot be reached within the configured timeout.
+        """
         try:
             self.client.admin.command("ping")
         except ServerSelectionTimeoutError as exc:
             raise RuntimeError(self._format_connection_error(exc)) from exc
 
     def upsert_chunks(self, records: List[ChunkRecord]) -> Dict[str, int]:
+        """Bulk-upsert chunk records matched by `chunk_id`.
+
+        Args:
+            records: List of ChunkRecord objects to write.
+
+        Returns:
+            Dict with keys ``upserted_count``, ``modified_count``, ``matched_count``.
+        """
         if not records:
             return {"upserted_count": 0, "modified_count": 0, "matched_count": 0}
 
@@ -99,6 +117,12 @@ class MongoRepo:
         }
 
     def ensure_indexes(self) -> None:
+        """Create required MongoDB indexes if they do not already exist.
+
+        Creates a unique index on ``chunk_id``, standard indexes on ``source_id``
+        and ``version``, a compound text index for lexical fallback retrieval,
+        and a unique manifest index on ``source_id``.
+        """
         self.collection.create_index("chunk_id", unique=True, name="chunk_id_unique")
         self.collection.create_index("source_id", name="source_id_idx")
         self.collection.create_index("version", name="version_idx")
@@ -111,6 +135,7 @@ class MongoRepo:
         self.manifest_collection.create_index("source_id", unique=True, name="manifest_source_unique")
 
     def get_existing_chunk_ids(self, chunk_ids: Iterable[str]) -> Set[str]:
+        """Return the subset of the given chunk IDs that already exist in the collection."""
         chunk_ids = [c for c in chunk_ids if c]
         if not chunk_ids:
             return set()
@@ -121,13 +146,16 @@ class MongoRepo:
         return {doc["chunk_id"] for doc in cursor if "chunk_id" in doc}
 
     def count_source_records(self, source_id: str) -> int:
+        """Return the number of chunk documents stored for the given source ID."""
         return int(self.collection.count_documents({"source_id": source_id}))
 
     def delete_source_records(self, source_id: str) -> int:
+        """Delete all chunk documents for the given source ID and return the deleted count."""
         result = self.collection.delete_many({"source_id": source_id})
         return int(result.deleted_count)
 
     def get_source_manifest(self, source_id: str) -> Optional[Dict[str, Any]]:
+        """Return the ingestion manifest for the given source ID, or None if not found."""
         return self.manifest_collection.find_one({"source_id": source_id}, {"_id": 0})
 
     def upsert_source_manifest(
@@ -139,6 +167,19 @@ class MongoRepo:
         source_path: str,
         records_in_db: int,
     ) -> None:
+        """Write or update the ingestion manifest entry for a source.
+
+        The manifest stores the source file hash and pipeline configuration hash so
+        the orchestrator can skip re-embedding unchanged sources on subsequent runs.
+
+        Args:
+            source_id: Unique identifier for the data source.
+            source_hash: SHA-256 hash of the raw source file content.
+            pipeline_hash: Hash of the ingestion configuration (embedder, version, etc.).
+            pipeline_signature: Human-readable dict of pipeline config values for debugging.
+            source_path: Filesystem path to the source file.
+            records_in_db: Number of chunk records written in the last ingestion run.
+        """
         now = datetime.now(timezone.utc).isoformat()
         payload = {
             "source_id": source_id,

@@ -1,6 +1,22 @@
+/**
+ * @file feedback.js
+ * Feedback UI component for the Loughborough University Virtual Assistant.
+ *
+ * Exports `createFeedbackRow`, which attaches "Was your question answered?" Yes/No
+ * buttons below each bot answer. Clicking Yes logs a resolved=true event; clicking
+ * No sends the original query and answer to POST /feedback and displays the retried
+ * answer returned by the backend.
+ */
+
+/** Fallback message shown when the feedback retry request itself fails. */
 export const FRIENDLY_FEEDBACK_ERROR =
   "I couldn't improve that answer just now. Please try rephrasing your question.";
 
+/**
+ * Create a small <span> element containing a feedback status message.
+ * @param {string} text - Message to display.
+ * @returns {HTMLSpanElement}
+ */
 function createFeedbackMessage(text) {
   const message = document.createElement("span");
   message.className = "feedback-thanks";
@@ -8,6 +24,16 @@ function createFeedbackMessage(text) {
   return message;
 }
 
+/**
+ * POST a feedback payload to the backend and return the parsed response JSON.
+ *
+ * @param {object} opts
+ * @param {string}   opts.feedbackEndpoint - Full URL for POST /feedback.
+ * @param {object}   opts.payload          - Request body: { user_query, last_answer, resolved, reason? }.
+ * @param {Function} opts.fetchImpl        - Fetch implementation (defaults to global fetch in callers).
+ * @returns {Promise<object>} Parsed response body: { action, answer_payload? }.
+ * @throws {Error} If the response status is not 2xx.
+ */
 async function postFeedback({
   feedbackEndpoint,
   payload,
@@ -39,6 +65,24 @@ async function postFeedback({
   return responsePayload;
 }
 
+/**
+ * Build a feedback row DOM element and attach Yes/No click handlers.
+ *
+ * The row shows "Was your question answered?" with two buttons:
+ * - Yes  → fires onAcknowledge() and sends resolved=true to the backend (best-effort, no retry).
+ * - No   → calls POST /feedback with resolved=false, shows the retried answer via onRetryAnswer(),
+ *           or shows an error message via onRetryError() if the retry fails.
+ *
+ * @param {object}   opts
+ * @param {string}   opts.userQuery        - The original user question.
+ * @param {string}   opts.answerText       - The bot answer the user is rating.
+ * @param {string}   opts.feedbackEndpoint - Full URL for POST /feedback.
+ * @param {Function} [opts.fetchImpl]      - Fetch implementation; defaults to global fetch.
+ * @param {Function} [opts.onRetryAnswer]  - Called with the retried answer string on success.
+ * @param {Function} [opts.onRetryError]   - Called with an error message string if retry fails.
+ * @param {Function} [opts.onAcknowledge]  - Called when the user clicks Yes.
+ * @returns {HTMLDivElement} The fully wired feedback row element.
+ */
 export function createFeedbackRow({
   userQuery,
   answerText,

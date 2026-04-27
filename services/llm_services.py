@@ -52,6 +52,16 @@ class LLMService:
         system_prompt: str = "You are a helpful assistant.",
         max_tokens: int = 400,
     ) -> str:
+        """Generate a plain-text completion from the LLM.
+
+        Args:
+            prompt: User-turn message.
+            system_prompt: System instruction sent before the user message.
+            max_tokens: Maximum tokens the model may output.
+
+        Returns:
+            Stripped text content of the first completion choice.
+        """
         response = self.client.chat.completions.create(
             model=self.model,
             temperature=self.temperature,
@@ -69,6 +79,20 @@ class LLMService:
         system_prompt: str,
         max_tokens: int = 300,
     ) -> Dict[str, Any]:
+        """Generate a JSON-structured completion from the LLM.
+
+        Uses OpenAI's `response_format={"type": "json_object"}` mode to
+        guarantee a parseable JSON string. Falls back to an empty dict if
+        parsing fails.
+
+        Args:
+            user_prompt: User-turn message (should instruct JSON output).
+            system_prompt: System instruction describing the JSON schema.
+            max_tokens: Maximum tokens the model may output.
+
+        Returns:
+            Parsed JSON dict, or an empty dict on parse failure.
+        """
         response = self.client.chat.completions.create(
             model=self.model,
             temperature=0.0,

@@ -464,6 +464,24 @@ class QueryOrchestrator:
         reason: Optional[str] = None,
         top_k_override: Optional[int] = None,
     ) -> Dict[str, Any]:
+        """Re-run the pipeline with broadened retrieval after a negative feedback signal.
+
+        Called when the user indicates the previous answer did not resolve their question.
+        Retrieval is broadened (higher top_k, looser domain filter) and the prior answer
+        is evaluated against the new evidence before generating a revised response.
+
+        Args:
+            user_query: The original user question.
+            last_answer: The answer the user marked as unhelpful.
+            reason: Optional feedback reason from the frontend
+                (``wrong_topic`` | ``too_vague`` | ``missing_detail`` | ``incorrect``).
+                Controls retry strategy: ``too_vague`` prefers clarification,
+                ``incorrect`` applies a conservative confidence threshold.
+            top_k_override: Optional hard cap on the number of chunks retrieved.
+
+        Returns:
+            Response dict in the same shape as ``run()``.
+        """
         guard_triggered, guard_reason = self._safety_guard_check(user_query)
         if guard_triggered:
             return self._safety_guard_response(user_query, guard_reason)

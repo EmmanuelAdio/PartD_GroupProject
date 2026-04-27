@@ -1,4 +1,16 @@
-// loads Three.js, .glb avatar and allow zoom and rotation 
+/**
+ * @file main.js
+ * Loughborough University Virtual Assistant — avatar UI entry point.
+ *
+ * Initialises a Three.js scene with two GLB avatars (idle / talking), wires up
+ * the chat log, Web Speech API (TTS + STT), markdown rendering, feedback buttons,
+ * and the debug pipeline inspector panel (?debug=1).
+ *
+ * Key exports / side-effects on load:
+ * - Renders the 3D scene and starts the animation loop.
+ * - Loads the idle avatar and fires the intro speech on first user interaction.
+ * - Attaches event listeners to the send button, mic button, and text input.
+ */
 import "./style.css";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -65,6 +77,10 @@ let avatarHeadPosition = null;
 let currentAvatarState = 'idle';
 let idleAvatarPosition = null; // shared position applied to all avatars
 
+/**
+ * Switch between the idle and talking avatar models.
+ * @param {'idle'|'talking'} state - Target avatar state.
+ */
 function setAvatarState(state) {
   const next = avatars[state] ? state : 'idle';
   if (avatars[currentAvatarState]) avatars[currentAvatarState].visible = false;
@@ -72,7 +88,11 @@ function setAvatarState(state) {
   currentAvatarState = next;
 }
 
-// Centre and ground an avatar; returns its final bounding box
+/**
+ * Centre an avatar at the world origin and drop it to y=0 (ground level).
+ * @param {THREE.Object3D} avatar - The loaded GLTF scene root.
+ * @returns {THREE.Box3} The final world-space bounding box after positioning.
+ */
 function positionAvatar(avatar) {
   const box = new THREE.Box3().setFromObject(avatar);
   avatar.position.sub(box.getCenter(new THREE.Vector3()));
@@ -81,7 +101,12 @@ function positionAvatar(avatar) {
   return new THREE.Box3().setFromObject(avatar);
 }
 
-// Set up camera from the idle avatar's bounding box — called as soon as it loads
+/**
+ * Position the camera to frame the avatar based on its bounding box.
+ * Sets near/far clipping planes, orbit target, and zoom limits.
+ * Called once when the idle GLB finishes loading.
+ * @param {THREE.Box3} box - Bounding box of the positioned idle avatar.
+ */
 function setupCamera(box) {
   const size   = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
@@ -379,6 +404,16 @@ if (window.speechSynthesis) {
 }
 let speechSessionId = 0; // incremented on each new speakText call to invalidate stale callbacks
 
+/**
+ * Speak a text string using the Web Speech API (TTS).
+ *
+ * Strips markdown syntax, splits into sentence chunks to avoid Chrome's ~15 s
+ * TTS stall bug, and switches the avatar to the talking state while audio plays.
+ * Cancels any in-progress speech before starting. No-ops when speechSynthesis is
+ * unavailable (Firefox / Safari fallback).
+ *
+ * @param {string} text - Raw text or markdown string to speak.
+ */
 function speakText(text) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
@@ -526,6 +561,20 @@ function hideThinking() {
   avatarThinkingEl.classList.remove("visible");
 }
 
+/**
+ * Process and dispatch a user query — the main chat handler.
+ *
+ * Checks for canned responses first (no API call). For all other questions,
+ * sends POST /query, renders the answer in the chat log, speaks it via TTS,
+ * and attaches a feedback row. In DEBUG_MODE, also updates the pipeline inspector
+ * panel with processor/retrieval/evaluator diagnostics.
+ *
+ * Handles the message-edit flow: if a previous message is being edited, its
+ * bubble and all subsequent messages are removed before the new query is sent.
+ *
+ * @param {string|null} [questionText] - Query text; falls back to the text input value.
+ * @param {boolean}     [fromVoice]    - True when the query came from speech recognition.
+ */
 async function handleSend(questionText, fromVoice = false) {
   const q = (questionText ?? textInput.value).trim();
   if (!q) {
@@ -628,6 +677,12 @@ async function handleSend(questionText, fromVoice = false) {
 
 const INTRO_TEXT = "Hi, welcome to Loughborough University's Open Day! I'm your virtual assistant, here to help answer any questions you might have about our courses, campus, student life, or anything else. Feel free to type or speak your question to get started.";
 
+/**
+ * Display and speak the welcome introduction message.
+ *
+ * @param {boolean} [waitForInteraction] - If true, defers speech until the first
+ *   user click or keypress (required by Chrome's autoplay policy).
+ */
 function playIntro(waitForInteraction = false) {
   appendMessage("bot", INTRO_TEXT);
   micBtn.disabled = true;
@@ -673,6 +728,11 @@ function playIntro(waitForInteraction = false) {
   }
 }
 
+/**
+ * Reset the chat to a clean state and replay the intro.
+ * Cancels any in-progress speech, clears the chat log, and resets all
+ * conversation state variables (lastQuestion, lastAnswer, pendingEditElements).
+ */
 function startNewConversation() {
   // Stop any ongoing speech or request
   window.speechSynthesis.cancel();

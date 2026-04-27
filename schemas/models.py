@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Optional, Literal
 SourceType = Literal["json", "pdf", "web", "txt"]
 
 class Document(BaseModel):
+    """A raw source document before chunking — one entry per source file or web page."""
+
     source_id: str
     source_type: SourceType
     title: Optional[str] = None
@@ -12,6 +14,8 @@ class Document(BaseModel):
     raw: Dict[str, Any] = Field(default_factory=dict)
 
 class Chunk(BaseModel):
+    """An intermediate text chunk produced by the ingestion splitter before tagging and embedding."""
+
     chunk_id: str
     source_id: str
     text: str
@@ -20,12 +24,16 @@ class Chunk(BaseModel):
     raw_path: Optional[str] = None  # e.g. "facilities[3]" or "qna[12]"
 
 class ChunkTags(BaseModel):
+    """Domain classification and entity tags assigned to a chunk by the tagger."""
+
     domain: str
     entity_tags: List[str] = Field(default_factory=list)
     key_fields: Dict[str, Any] = Field(default_factory=dict)
     confidence: float = 0.0
 
 class ChunkRecord(BaseModel):
+    """A fully processed chunk ready to be written to MongoDB, including its embedding vector."""
+
     chunk_id: str
     source_id: str
     source_type: SourceType
@@ -67,7 +75,11 @@ class RetrievalQuery(BaseModel):
 
 
 class EvidenceItem(BaseModel):
-    """Final evidence payload returned to the Answerer Agent."""
+    """A ranked evidence chunk returned by RetrieverService to the AnswererAgent.
+
+    Carries both the raw text and retrieval scores so the answerer and evaluator
+    can cite specific chunks and assess grounding quality.
+    """
 
     chunk_id: str
     source_id: str
@@ -91,7 +103,7 @@ class EvidenceItem(BaseModel):
 
 
 class AnswerCitation(BaseModel):
-    """Reference to one evidence item used in the final answer."""
+    """A reference linking a claim in the final answer back to a specific evidence chunk."""
 
     evidence_id: int = Field(ge=1)
     chunk_id: str
@@ -103,7 +115,11 @@ class AnswerCitation(BaseModel):
 
 
 class AnswerResult(BaseModel):
-    """Grounded answer payload returned by the Answerer Agent."""
+    """Final answer payload produced by AnswererAgent and consumed by the orchestrator.
+
+    ``grounded`` and ``confidence`` are set by the answerer; the evaluator may
+    override the effective verdict if grounding checks fail.
+    """
 
     answer: str
     grounded: bool = True
@@ -117,7 +133,11 @@ EvaluationVerdict = Literal["pass", "revise", "ask_clarification", "fallback"]
 
 
 class RuleCheckResult(BaseModel):
-    """Deterministic evaluator output from rule-based verification."""
+    """Output of the EvaluatorAgent's deterministic rule-check layer.
+
+    Always runs before the optional LLM judge. Populated with boolean quality
+    signals and optional suggested filters for the orchestrator retry path.
+    """
 
     grounded: bool = True
     relevant: bool = True
@@ -138,7 +158,12 @@ class RuleCheckResult(BaseModel):
 
 
 class LLMJudgeResult(BaseModel):
-    """Optional second-stage evaluator output from an LLM judge."""
+    """Optional second-stage evaluator output from the LLM judge.
+
+    Only populated for borderline cases where rule checks are inconclusive.
+    Fields are Optional so the orchestrator can merge only the non-null signals
+    with the rule-check result.
+    """
 
     grounded: Optional[bool] = None
     relevant: Optional[bool] = None
@@ -153,7 +178,12 @@ class LLMJudgeResult(BaseModel):
 
 
 class EvaluationResult(BaseModel):
-    """Final evaluator verdict consumed by orchestration policy."""
+    """Final evaluator verdict consumed by the orchestration policy.
+
+    ``verdict`` drives the runtime action: ``pass`` serves the answer as-is,
+    ``revise`` triggers one retrieval/answer retry, ``ask_clarification`` returns
+    a clarifying question, and ``fallback`` returns a safe generic response.
+    """
 
     verdict: EvaluationVerdict
     grounded: bool
