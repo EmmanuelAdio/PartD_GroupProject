@@ -1,46 +1,27 @@
-# PartD Group Project
+# Loughborough University Open Day Virtual Assistant
 
-This repository currently includes working ingestion and retrieval services for RAG:
-1. Read JSON source files from `data/`
-2. Normalize + chunk into retrieval-friendly text blocks
-3. Add domain/entity tags (heuristic or LLM-assisted)
-4. Generate embeddings (deterministic local or OpenAI)
-5. Upsert chunk records into MongoDB (`open_day_knowledge.kb_chuncks`)
-6. Plan retrieval queries with an LLM-first Processor Agent
-7. Run hybrid retrieval (vector + lexical + metadata filters)
-8. Merge/rerank evidence and return answerer-ready items
-9. Generate grounded final answers from retrieved evidence with an Answerer Agent
-10. Evaluate answer grounding/relevance/safety with a hybrid Evaluator Agent
-11. Apply orchestrator decisions (`pass`, `revise`, `ask_clarification`, `fallback`) before final API output
+A multi-agent RAG chatbot that answers prospective student questions about Loughborough University.
+A 3D avatar UI (Three.js) communicates with a FastAPI backend that runs a four-stage pipeline:
+**ProcessorAgent → RetrieverService → AnswererAgent → EvaluatorAgent**.
 
-## Current status
+## System overview
 
-Implemented:
-- `app/main.py`
-- `app/orchestrator.py`
-- `services/ingestion_service.py`
-- `services/embedding_service.py`
-- `services/llm_services.py`
-- `services/mongo_repo.py`
-- `services/index_manager.py`
-- `services/retriever_service.py`
-- `agents/processor_agent.py`
-- `agents/answerer_agent.py`
-- `agents/evaluator_agent.py`
-- `schemas/models.py`
-- `test_ingestion_service.py`
-- `test_retrieval_service.py`
-- `test_index_manager.py`
-- `test_processor_agent.py`
-- `test_answerer_agent.py`
-- `test_evaluator_agent.py`
+| Layer | Description |
+|---|---|
+| **Avatar UI** | Vite + Three.js frontend with Web Speech TTS/STT, markdown rendering, and feedback buttons |
+| **FastAPI backend** | `POST /query`, `POST /feedback`, `POST /ingest/*`, `GET /health`, `GET /status` |
+| **ProcessorAgent** | LLM-first query planner — converts user text to a structured `RetrievalQuery` |
+| **RetrieverService** | Hybrid vector + lexical search over MongoDB Atlas with three-level fallback |
+| **AnswererAgent** | Grounded answer generation from retrieved evidence (LLM or deterministic) |
+| **EvaluatorAgent** | Rule-based + optional LLM judge that returns `pass / revise / ask_clarification / fallback` |
+| **MongoDB Atlas** | Knowledge base (`kb_chuncks`) with Atlas Vector Search and Atlas Search indexes |
+
+For detailed architecture diagrams see [SYSTEM_DIAGRAM.md](SYSTEM_DIAGRAM.md).
+For demo setup and example questions see [DEMO_CHECKLIST.md](DEMO_CHECKLIST.md).
 
 ## Setup
 
-Run from repo root:
-`c:\Users\Emman\OneDrive\Documents\GitHub\PartD_GroupProject`
-
-Install dependencies:
+Run from the project root. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
@@ -78,9 +59,8 @@ This is the fastest way to run the full chat app locally.
 
 ### 1) Start the backend (FastAPI)
 
-From the repo root:
+From the project root:
 ```bash
-cd c:\Users\Emman\OneDrive\Documents\GitHub\PartD_GroupProject
 pip install -r requirements.txt
 .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
@@ -93,7 +73,7 @@ Backend will be available at:
 
 Open a second terminal:
 ```bash
-cd c:\Users\Emman\OneDrive\Documents\GitHub\PartD_GroupProject\cs-avatar
+cd cs-avatar
 npm install
 ```
 
@@ -1160,16 +1140,6 @@ What these validate:
 - One-retry cap for `revise`
 - Debug payload shape including `evaluator_run`
 
-## Planned evaluator improvements / TODOs
-
-These are sensible next-step improvements for the multi-agent runtime, but they are not fully implemented yet:
-
-1. Proper clarification memory across turns
-Current clarification behavior is mostly single-turn. A future improvement is to store pending clarification state so follow-up answers such as `Butler Court` can be linked back to the earlier unresolved question instead of relying only on lightweight frontend context hints.
-
-2. Stronger evaluator branch coverage and two-turn clarification benchmarking
-Current evaluator benchmarking records verdicts, retries, clarification requests, and fallback usage, but a future improvement is to make branch coverage more explicit for `revise`, `ask_clarification`, and `fallback`, and to add a two-turn clarification benchmark that checks whether the system handles clarification follow-ups correctly.
-
 ## Version numbers in ingestion records
 
 Where version comes from:
@@ -1185,30 +1155,6 @@ Recommended versioning rule (next step):
 1. Use semantic labels: `ingest-v1`, `ingest-v2`, etc.
 2. Bump when chunking/tagging/embedding logic changes.
 3. Keep old data queryable by filtering on `version`.
-
-## What is still missing in this ingestion pipeline
-
-1. Strong idempotency key strategy across model changes
-Currently `chunk_id` is content-derived; changing chunk format can create new ids unexpectedly. A stable source+path strategy would help.
-
-2. Atlas index operations are environment-dependent
-Atlas Search/Vector index APIs vary by cluster tier/permissions/driver support.
-`AtlasIndexManager` now handles helper + command fallbacks, but Atlas permissions are still required.
-
-3. Retry/backoff around external API calls
-OpenAI embedding/tagging calls should have retry policy and better error telemetry.
-
-4. Cost and throughput controls
-No rate limiting, token budgeting, or batching policy tuning for LLM tagging at scale.
-
-5. Quality evaluation for tags
-No automated evaluation set yet to measure domain/entity tagging precision/recall.
-
-6. Ingestion observability
-No run report persisted yet (start/end time, records processed, failures by source).
-
-7. Lifecycle tooling
-No explicit rollback/rebuild command per source and version beyond manual deletes.
 
 ## Troubleshooting
 

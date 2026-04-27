@@ -412,29 +412,65 @@ flowchart TD
 
 ## 9. API Response Shapes
 
-`POST /query` has two output modes:
+`POST /query` has two output modes, controlled by the `debug` boolean request field.
 
-**Default (user-facing)**
-```
-{ query, answer, grounded, confidence, citations }
-```
-
-**Debug mode** (`debug=true`)
-```
+**Default (user-facing)** — shaped by `_shape_query_response()` in `app/main.py`
+```json
 {
-  query, answer, grounded, confidence, citations,
-  processor_plan, retrieval_diagnostics,
-  evaluator_result, orchestration_meta,
-  timing: { processor_ms, retriever_ms, answerer_ms, evaluator_ms, total_ms }
+  "query":      "...",
+  "answer":     "...",
+  "grounded":   true,
+  "confidence": 0.92,
+  "citations":  []
 }
 ```
+
+**Debug mode** (`debug=true`) — returns the full internal pipeline dict
+```json
+{
+  "user_query": "...",
+  "processor_plan": {
+    "query_text": "...", "domain": "...", "sections": [], "entity_tags": [], "top_k": 8
+  },
+  "answerer_run": {
+    "answer": "...", "grounded": true, "confidence": 0.92,
+    "citations": [], "used_evidence_count": 3, "fallback_used": false
+  },
+  "evaluator_run": {
+    "verdict": "pass", "effective_verdict": "pass",
+    "grounded": true, "relevant": true, "clear": true, "safe": true,
+    "issues": [], "notes": null, "history": []
+  },
+  "orchestration_decision": {
+    "initial_verdict": "pass", "final_verdict": "pass",
+    "effective_verdict": "pass", "runtime_action": "pass",
+    "revise_retries_used": 0, "max_revise_retries": 1,
+    "safety_guard_triggered": false
+  },
+  "retrieval_run": {
+    "attempt_used": 1,
+    "attempts_log": [{ "attempt": 1, "description": "initial:full_plan", "hits": 5 }],
+    "result_count": 5, "retrieved_result_count": 5,
+    "diagnostics": { "vector_mode": "atlas", "text_mode": "atlas" },
+    "evidence": []
+  },
+  "timing_ms": {
+    "processor": 312.5, "retriever": 180.2,
+    "answerer": 820.1, "evaluator": 45.3, "total": 1358.1
+  },
+  "mongo_status": { "database": "open_day_knowledge", "total_chunk_docs": 570 },
+  "index_health": { "healthy": true, "vector_index_found": true, "text_index_found": true }
+}
+```
+
+> When the safety guard fires, `safety_guard_triggered: true` and `safety_guard_reason` are added to `orchestration_decision`, and retrieval/processor timing fields are all `0.0`.
 
 `POST /feedback` returns:
 
 | User action | `action` field | Extra field |
 |---|---|---|
-| Clicked Yes (resolved) | `"acknowledged"` | — |
-| Clicked No (not resolved) | `"retried"` | `answer_payload` (same shape as default /query response) |
+| Clicked Yes (resolved) | `"acknowledged"` | `answer_payload: null` |
+| Clicked No (not resolved) | `"retried"` | `answer_payload` — same shape as the default `/query` response |
 
 ---
 
