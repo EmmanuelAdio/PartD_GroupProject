@@ -471,3 +471,127 @@ flowchart LR
     OUT --> PLOT
     PLOT --> PNG
 ```
+
+---
+
+## 11. Architecture Overview (Demo Summary)
+
+One-line view of how a question travels through every layer.
+
+```mermaid
+flowchart LR
+    A["👤 User"] --> B["Avatar UI\nVite · Three.js · Web Speech"]
+    B --> C["FastAPI\nPOST /query"]
+    C --> D["ProcessorAgent\nplans retrieval"]
+    D --> E["RetrieverService\nhybrid vector + lexical search"]
+    E --> F["AnswererAgent\ngenerates grounded answer"]
+    F --> G["EvaluatorAgent\nchecks quality"]
+    G --> H["Response JSON\nanswer · confidence · citations"]
+    H --> B
+```
+
+---
+
+## 12. Simplified Query Sequence (Demo View)
+
+Condensed flow — one participant per layer, key steps only.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as Avatar UI
+    participant API as FastAPI /query
+    participant PA as Processor
+    participant RS as Retriever
+    participant AA as Answerer
+    participant EV as Evaluator
+
+    User->>UI: Ask question (text or voice)
+    UI->>API: POST /query { query }
+    API->>PA: Plan retrieval (domain · sections · entities)
+    PA->>RS: Retrieve evidence (hybrid search)
+    RS-->>AA: Top-ranked evidence chunks
+    AA->>EV: Draft answer + citations
+    EV-->>API: Verdict (pass / revise / fallback / clarify)
+    API-->>UI: { answer, grounded, confidence }
+    UI-->>User: Display markdown · speak · animate avatar
+```
+
+---
+
+## 13. Query Outcome Flowchart
+
+What happens at each decision point from retrieval through to the final response.
+
+```mermaid
+flowchart TD
+    Q[User Query]
+    RET[Retrieve evidence\nhybrid vector + lexical search]
+    HIT{Evidence\nfound?}
+
+    RELAX[Broaden search\nrelax domain filter]
+    BARE[Last resort\nbare query · no filters]
+    NOHIT[No evidence at all]
+
+    GEN[Generate answer\nAnswererAgent]
+    EVAL{Evaluator\nverdict}
+
+    PASS["✅ pass\nServe answer"]
+    REV["🔄 revise\nRetry with suggested filters — once"]
+    ASK["❓ ask_clarification\nReturn clarifying question"]
+    FALL["⚠️ fallback\nSafe generic reply + official URL"]
+
+    Q --> RET
+    RET --> HIT
+    HIT -->|Yes| GEN
+    HIT -->|No — attempt 2| RELAX
+    RELAX --> HIT
+    HIT -->|No — attempt 3| BARE
+    BARE --> GEN
+    NOHIT --> FALL
+
+    GEN --> EVAL
+    EVAL --> PASS
+    EVAL --> REV
+    REV --> GEN
+    EVAL --> ASK
+    EVAL --> FALL
+```
+
+---
+
+## 14. Example Query Trace
+
+Step-by-step trace for: *"How much is Butler Court per week?"*
+
+| Stage | Output |
+|---|---|
+| **User query** | "How much is Butler Court per week?" |
+| **ProcessorAgent** | domain: `accommodation` · section: `pricing` · entity\_tags: `["butler court"]` · query\_text: "Butler Court weekly price" |
+| **RetrieverService** | Attempt 1 — vector + lexical search with domain filter → returns 5 accommodation chunks including Butler Court pricing row |
+| **AnswererAgent** | Draft: "Butler Court costs £XXX per week, with a contract length of XX weeks." · grounded: `true` · confidence: `0.92` · citations: `[chunk_id_abc]` |
+| **EvaluatorAgent** | evidence\_present: ✅ · grounded: ✅ · relevant: ✅ · clear: ✅ · safe: ✅ · **verdict: pass** |
+| **Response to UI** | Answer displayed in chat, spoken aloud by TTS, avatar switches to talking animation |
+
+---
+
+## 15. Evaluation Table
+
+Representative questions covering each domain, with expected system behaviour.
+
+| Question type | Example question | Expected behaviour | Evaluator verdict |
+|---|---|---|---|
+| **Accommodation — specific** | "How much does it cost to stay in Elvyn Hall?" | Exact weekly price + contract length from pricing data | pass |
+| **Accommodation — comparison** | "What is the cheapest accommodation?" | Deterministic price-sort → cheapest hall name + weekly price | pass |
+| **Accommodation — general** | "What accommodation options are available and when should I apply?" | Overview of halls, facilities, contract lengths, application timeline | pass |
+| **Courses — entry requirements** | "What are the entry requirements for this course?" | A-level / UCAS points for the relevant degree | pass |
+| **Courses — modules** | "What modules are compulsory and what options are available?" | Compulsory vs optional module list from course data | pass |
+| **Courses — placements** | "Are there opportunities for placements, internships or year abroad?" | Placement year / internship options from course data | pass |
+| **Finance — living costs** | "What are typical living costs in the area and on-campus?" | Indicative on-campus and off-campus cost ranges | pass |
+| **Finance — scholarships** | "Are there scholarships, bursaries or financial support options?" | Scholarship names, eligibility, amounts | pass |
+| **Support — wellbeing** | "What support services exist for mental health and wellbeing?" | Counselling, wellbeing teams, 24/7 helpline details | pass |
+| **Support — international** | "Is there support for international students and visa advice?" | International student office, visa guidance, pre-arrival support | pass |
+| **Campus life — societies** | "What student societies and clubs would you recommend for newcomers?" | Sports Union clubs, subject societies, social groups | pass |
+| **Career — employability** | "What career support and employability services are available?" | Careers office, employer events, CV workshops | pass |
+| **Ambiguous — triggers clarification** | "What does it cost?" | Evaluator detects ambiguity → clarification: "Do you mean tuition fees, accommodation, or something else?" | ask\_clarification |
+| **Out-of-scope — triggers fallback** | "What is the weather today?" | No evidence found → safe fallback with official Loughborough URL | fallback |
