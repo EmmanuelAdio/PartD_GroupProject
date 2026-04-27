@@ -412,6 +412,7 @@ class RetrieverService:
 
         merged: List[EvidenceItem] = []
         for chunk_id, cand in candidates.items():
+            # Base score: rank-normalised contributions from each retrieval channel (vector + BM25 text).
             vector_component = self._channel_component(
                 rank=cand.vector_rank,
                 total=len(vector_hits),
@@ -426,9 +427,11 @@ class RetrieverService:
                 bounds=text_bounds,
                 weight=self.text_weight,
             )
+            # Overlap boost rewards chunks that appear in both channels (higher confidence hit).
             overlap_component = self.overlap_boost if len(cand.channels) > 1 else 0.0
             final_score = vector_component + text_component + overlap_component
             doc_section = str(cand.doc.get("section") or "").lower()
+            # Section and entity boosts nudge query-relevant chunks toward the top of the ranking.
             section_component = self.section_boost if doc_section and doc_section in boost_sections else 0.0
 
             doc_tags = {str(t).lower() for t in cand.doc.get("entity_tags") or [] if t}

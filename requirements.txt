@@ -2,10 +2,8 @@ python-dotenv
 pymongo
 openai
 fastapi
-uvicorn
-langchain
-langchain_community
-langchain-openai
+uvicorn[standard]
+pydantic
 pypdf
 certifi
 ragas

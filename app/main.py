@@ -145,17 +145,55 @@ def _log_feedback_event(
         # Logging must never block the user-facing response path.
         return
 
+def _log_query_pipeline(user_query: str, result: Dict[str, Any]) -> None:
+    """Print a one-line pipeline summary to the terminal for demo visibility."""
+    try:
+        plan = result.get("processor_plan", {})
+        retrieval = result.get("retrieval_run", {})
+        answerer = result.get("answerer_run", {})
+        evaluator = result.get("evaluator_run", {})
+        decision = result.get("orchestration_decision", {})
+        timing = result.get("timing_ms", {})
+        diag = retrieval.get("diagnostics", {})
+        conf = float(answerer.get("confidence") or 0)
+        print(
+            f'[query] "{user_query[:70]}"'
+            f' | domain={plan.get("domain") or "none"}'
+            f' | chunks={retrieval.get("result_count", 0)}'
+            f' | vector={diag.get("vector_mode", "?")}'
+            f' | grounded={answerer.get("grounded")}'
+            f' | conf={conf:.2f}'
+            f' | verdict={evaluator.get("verdict", "?")}'
+            f' | action={decision.get("runtime_action", "?")}'
+            f' | {timing.get("total", "?")}ms'
+        )
+    except Exception:
+        pass
+
+
 if FastAPI is not None:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         global ingestion_orchestrator, query_orchestrator
         default_embedder_backend = _default_query_embedder_backend()
-        ingestion_orchestrator = IngestionOrchestrator(
-            embedder_backend=default_embedder_backend,
+        openai_ok = bool(os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_API_KEY"))
+        mongo_ok = bool(os.getenv("MONGODB_URI"))
+        print(
+            f"[startup] embedder={default_embedder_backend}"
+            f" | openai_key={'set' if openai_ok else 'MISSING'}"
+            f" | mongodb_uri={'set' if mongo_ok else 'MISSING'}"
         )
-        query_orchestrator = QueryOrchestrator(
-            embedder_backend=default_embedder_backend,
-        )
+        try:
+            ingestion_orchestrator = IngestionOrchestrator(
+                embedder_backend=default_embedder_backend,
+            )
+            query_orchestrator = QueryOrchestrator(
+                embedder_backend=default_embedder_backend,
+            )
+            print("[startup] Orchestrators ready.")
+        except Exception as exc:
+            print(f"[startup ERROR] Orchestrator init failed: {exc}")
+            raise
         yield
 
     app = FastAPI(
@@ -201,7 +239,15 @@ if FastAPI is not None:
 
     @app.get("/health")
     def health():
-        return {"status": "ok"}
+        if query_orchestrator is None:
+            return {"status": "starting", "detail": "Orchestrators not yet ready."}
+        result: Dict[str, Any] = {"status": "ok"}
+        result["openai_configured"] = bool(os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_API_KEY"))
+        result["mongo"] = query_orchestrator._get_mongo_status()
+        result["index_health"] = query_orchestrator._get_index_health()
+        if result["mongo"].get("error"):
+            result["status"] = "degraded"
+        return result
 
     @app.post("/ingest/file")
     def ingest_file(req: IngestFileRequest):
@@ -254,8 +300,10 @@ if FastAPI is not None:
                 user_query=req.query,
                 top_k_override=req.top_k,
             )
+            _log_query_pipeline(req.query, result)
             return _shape_query_response(result, debug=req.debug)
         except Exception as e:
+            print(f"[query ERROR] {req.query!r}: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
     @app.post("/feedback", response_model=FeedbackResponse)

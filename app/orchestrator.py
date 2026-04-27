@@ -985,27 +985,32 @@ class QueryOrchestrator:
         if not self._should_expand_accommodation_price_evidence(user_query, plan):
             return evidence
 
-        expanded_docs = self.repo.collection.find(
-            {
-                "source_id": "accommodation_halls",
-                "domain": "accommodation",
-            },
-            {
-                "_id": 0,
-                "chunk_id": 1,
-                "source_id": 1,
-                "source_type": 1,
-                "title": 1,
-                "url": 1,
-                "text": 1,
-                "domain": 1,
-                "entity_tags": 1,
-                "section": 1,
-                "order": 1,
-                "version": 1,
-                "metadata": 1,
-            },
-        ).sort("order", 1)
+        try:
+            expanded_docs = list(
+                self.repo.collection.find(
+                    {
+                        "source_id": "accommodation_halls",
+                        "domain": "accommodation",
+                    },
+                    {
+                        "_id": 0,
+                        "chunk_id": 1,
+                        "source_id": 1,
+                        "source_type": 1,
+                        "title": 1,
+                        "url": 1,
+                        "text": 1,
+                        "domain": 1,
+                        "entity_tags": 1,
+                        "section": 1,
+                        "order": 1,
+                        "version": 1,
+                        "metadata": 1,
+                    },
+                ).sort("order", 1)
+            )
+        except Exception:
+            expanded_docs = []
 
         merged: List[EvidenceItem] = []
         seen = set()
@@ -1056,24 +1061,38 @@ class QueryOrchestrator:
         return is_accommodation and has_extreme and (has_price_signal or has_accommodation_subject)
 
     def _get_mongo_status(self) -> Dict[str, Any]:
-        doc_count = self.repo.collection.count_documents({})
-        return {
-            "database": self._mongo_db,
-            "collection": self._mongo_collection,
-            "total_chunk_docs": doc_count,
-        }
+        try:
+            doc_count = self.repo.collection.count_documents({})
+            return {
+                "database": self._mongo_db,
+                "collection": self._mongo_collection,
+                "total_chunk_docs": doc_count,
+            }
+        except Exception as exc:
+            return {
+                "database": self._mongo_db,
+                "collection": self._mongo_collection,
+                "total_chunk_docs": None,
+                "error": f"{type(exc).__name__}: {exc}",
+            }
 
     def _get_index_health(self) -> Dict[str, Any]:
-        r = self.retriever.check_index_health()
-        return {
-            "healthy": r.is_healthy,
-            "vector_index_found": r.vector_index_found,
-            "vector_index_status": r.vector_index_status,
-            "vector_index_dimensions": r.vector_index_dimensions,
-            "text_index_found": r.text_index_found,
-            "text_index_status": r.text_index_status,
-            "errors": r.errors,
-        }
+        try:
+            r = self.retriever.check_index_health()
+            return {
+                "healthy": r.is_healthy,
+                "vector_index_found": r.vector_index_found,
+                "vector_index_status": r.vector_index_status,
+                "vector_index_dimensions": r.vector_index_dimensions,
+                "text_index_found": r.text_index_found,
+                "text_index_status": r.text_index_status,
+                "errors": r.errors,
+            }
+        except Exception as exc:
+            return {
+                "healthy": False,
+                "error": f"{type(exc).__name__}: {exc}",
+            }
 
     @staticmethod
     def _build_embedder(embedder_backend: str, embedding_model: str):

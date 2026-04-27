@@ -202,6 +202,70 @@ const API_BASE_URL = (
 const QUERY_ENDPOINT = `${API_BASE_URL}/query`;
 const FEEDBACK_ENDPOINT = `${API_BASE_URL}/feedback`;
 
+// Debug mode — add ?debug=1 to the URL to enable the pipeline inspector panel.
+const DEBUG_MODE = new URLSearchParams(window.location.search).has("debug");
+
+// ── Debug panel (only created when DEBUG_MODE is active) ──────────────────────
+let debugPanelEl = null;
+if (DEBUG_MODE) {
+  debugPanelEl = document.createElement("div");
+  debugPanelEl.id = "debug-panel";
+  debugPanelEl.innerHTML = `
+    <div id="debug-header">
+      <span>Pipeline Inspector</span>
+      <button id="debug-collapse-btn" title="Collapse">−</button>
+    </div>
+    <div id="debug-body">
+      <div class="debug-section" id="dbg-timing">⏱ Waiting for first query…</div>
+      <div class="debug-section" id="dbg-processor">Processor: —</div>
+      <div class="debug-section" id="dbg-retrieval">Retrieval: —</div>
+      <div class="debug-section" id="dbg-evaluator">Evaluator: —</div>
+    </div>`;
+  document.body.appendChild(debugPanelEl);
+  document.getElementById("debug-collapse-btn").addEventListener("click", () => {
+    const body = document.getElementById("debug-body");
+    const btn = document.getElementById("debug-collapse-btn");
+    const isCollapsed = body.style.display === "none";
+    body.style.display = isCollapsed ? "flex" : "none";
+    btn.textContent = isCollapsed ? "−" : "+";
+  });
+}
+
+function updateDebugPanel(payload) {
+  if (!debugPanelEl || !payload) return;
+  const plan = payload.processor_plan || {};
+  const ret = payload.retrieval_run || {};
+  const diag = ret.diagnostics || {};
+  const ans = payload.answerer_run || {};
+  const ev = payload.evaluator_run || {};
+  const dec = payload.orchestration_decision || {};
+  const t = payload.timing_ms || {};
+
+  const verdictIcon = { pass: "✅", ask_clarification: "❓", fallback: "⚠️", revise: "🔄" }[ev.verdict] || "❔";
+  const conf = typeof ans.confidence === "number" ? ans.confidence.toFixed(2) : "?";
+
+  document.getElementById("dbg-timing").textContent =
+    `⏱ total=${t.total ?? "?"}ms  processor=${t.processor ?? "?"}ms  retriever=${t.retriever ?? "?"}ms  answerer=${t.answerer ?? "?"}ms  evaluator=${t.evaluator ?? "?"}ms`;
+
+  document.getElementById("dbg-processor").textContent =
+    `Processor → domain: ${plan.domain || "none"}  |  sections: ${(plan.sections || []).join(", ") || "none"}\n` +
+    `           entities: ${(plan.entity_tags || []).join(", ") || "none"}\n` +
+    `           query: "${plan.query_text || "?"}"`;
+
+  document.getElementById("dbg-retrieval").textContent =
+    `Retrieval → attempt: ${ret.attempt_used ?? "?"}  |  chunks: ${ret.result_count ?? 0}  |  retrieved: ${ret.retrieved_result_count ?? 0}\n` +
+    `            vector: ${diag.vector_mode || "?"}  |  text: ${diag.text_mode || "?"}` +
+    (diag.vector_search_error ? `\n            ⚠ vector_error: ${diag.vector_search_error}` : "") +
+    (diag.atlas_search_error ? `\n            ⚠ text_error: ${diag.atlas_search_error}` : "");
+
+  const issueStr = (ev.issues || []).length ? `\n           issues: ${ev.issues.join(" | ")}` : "";
+  document.getElementById("dbg-evaluator").textContent =
+    `Evaluator → ${verdictIcon} verdict: ${ev.verdict || "?"}  |  action: ${dec.runtime_action || "?"}\n` +
+    `            grounded: ${ev.grounded}  relevant: ${ev.relevant}  clear: ${ev.clear}  safe: ${ev.safe}\n` +
+    `            confidence: ${conf}  |  grounded_answer: ${ans.grounded}` +
+    issueStr;
+}
+
 let isSending = false;
 let recognition = null;
 let isListening = false;
@@ -512,7 +576,7 @@ async function handleSend(questionText, fromVoice = false) {
     const response = await fetch(QUERY_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: queryToSend }),
+      body: JSON.stringify({ query: queryToSend, ...(DEBUG_MODE && { debug: true }) }),
     });
 
     const contentType = response.headers.get("content-type") || "";
@@ -528,10 +592,14 @@ async function handleSend(questionText, fromVoice = false) {
       throw new Error(detail);
     }
 
-    const answer =
-      payload && typeof payload.answer === "string" && payload.answer.trim()
-        ? payload.answer.trim()
-        : "I could not generate an answer from the backend.";
+    // In normal mode the backend returns { answer, ... }.
+    // In debug mode (debug:true) it returns the full pipeline dict with answerer_run.answer.
+    const rawAnswer =
+      (payload?.answerer_run?.answer ?? payload?.answer ?? "").trim();
+    const answer = rawAnswer || "I could not generate an answer from the backend.";
+
+    if (DEBUG_MODE) updateDebugPanel(payload);
+
     lastAnswer = answer;
     hideThinking();
     appendMessage("bot", answer, {

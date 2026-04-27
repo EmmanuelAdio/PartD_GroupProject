@@ -289,7 +289,9 @@ class AnswererAgent:
 
         citations = self._build_citations(parsed.citation_ids, evidence)
         if parsed.grounded and not citations and evidence:
-            citations = self._build_citations([1], evidence)
+            # LLM claimed grounded but cited nothing — treat as ungrounded rather than
+            # silently assigning citation [1], which would fabricate a source link.
+            parsed = parsed.model_copy(update={"grounded": False, "confidence": 0.0})
 
         return AnswerResult(
             answer=self._polish_answer_text(parsed.answer) or "I couldn't form a grounded answer from the retrieved evidence.",
@@ -879,14 +881,8 @@ class AnswererAgent:
 
     def _ordered_prompt_evidence(self, evidence: Sequence[EvidenceItem]) -> List[EvidenceItem]:
         selected = list(evidence[: self.max_evidence_items])
-        selected.sort(
-            key=lambda item: (
-                str(item.source_id or ""),
-                int(item.order or 0),
-                str(item.section or ""),
-                str(item.chunk_id or ""),
-            )
-        )
+        # Present the highest-scoring chunks first so the LLM's primary evidence is most relevant.
+        selected.sort(key=lambda item: float(item.score or 0.0), reverse=True)
         return selected
 
     def _collect_price_candidates(self, evidence: Sequence[EvidenceItem]) -> List[Dict[str, Any]]:
