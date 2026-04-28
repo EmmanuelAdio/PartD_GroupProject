@@ -149,7 +149,9 @@ export function createFeedbackRow({
         throw new Error("Retry response did not include an answer.");
       }
       setRowMessage("Thanks for the feedback.");
-      onRetryAnswer(answer);
+      // Pass the full answer_payload as a second argument so callers (e.g. the
+      // debug panel) can read grounded, confidence, citations without re-fetching.
+      onRetryAnswer(answer, payload.answer_payload);
     } catch (error) {
       console.error("Feedback retry failed:", error);
       setRowMessage("Thanks for the feedback.");

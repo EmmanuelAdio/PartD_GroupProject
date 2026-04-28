@@ -245,6 +245,7 @@ if (DEBUG_MODE) {
       <div class="debug-section" id="dbg-processor">Processor: —</div>
       <div class="debug-section" id="dbg-retrieval">Retrieval: —</div>
       <div class="debug-section" id="dbg-evaluator">Evaluator: —</div>
+      <div class="debug-section" id="dbg-feedback">Feedback: —</div>
     </div>`;
   document.body.appendChild(debugPanelEl);
   document.getElementById("debug-collapse-btn").addEventListener("click", () => {
@@ -266,7 +267,7 @@ function updateDebugPanel(payload) {
   const dec = payload.orchestration_decision || {};
   const t = payload.timing_ms || {};
 
-  const verdictIcon = { pass: "✅", ask_clarification: "❓", fallback: "⚠️", revise: "🔄" }[ev.verdict] || "❔";
+  // const verdictIcon = { pass: "✅", ask_clarification: "❓", fallback: "⚠️", revise: "🔄" }[ev.verdict] || "❔";
   const conf = typeof ans.confidence === "number" ? ans.confidence.toFixed(2) : "?";
 
   document.getElementById("dbg-timing").textContent =
@@ -285,10 +286,35 @@ function updateDebugPanel(payload) {
 
   const issueStr = (ev.issues || []).length ? `\n           issues: ${ev.issues.join(" | ")}` : "";
   document.getElementById("dbg-evaluator").textContent =
-    `Evaluator → ${verdictIcon} verdict: ${ev.verdict || "?"}  |  action: ${dec.runtime_action || "?"}\n` +
+    `Evaluator → verdict: ${ev.verdict || "?"}  |  action: ${dec.runtime_action || "?"}\n` +
     `            grounded: ${ev.grounded}  relevant: ${ev.relevant}  clear: ${ev.clear}  safe: ${ev.safe}\n` +
     `            confidence: ${conf}  |  grounded_answer: ${ans.grounded}` +
     issueStr;
+}
+
+/**
+ * Update the Feedback section of the debug panel.
+ * @param {{ type: "acknowledged"|"retried"|"retry_failed", answerPayload?: object, error?: string }} info
+ */
+function updateFeedbackDebug(info) {
+  const el = document.getElementById("dbg-feedback");
+  if (!el) return;
+  if (info.type === "acknowledged") {
+    el.textContent = "Feedback → User clicked Yes  |  resolved: true  |  no retry";
+    return;
+  }
+  if (info.type === "retry_failed") {
+    el.textContent = `Feedback → User clicked No  |  retry FAILED  |  error: ${info.error || "unknown"}`;
+    return;
+  }
+  // retried
+  const ap = info.answerPayload || {};
+  const conf = typeof ap.confidence === "number" ? ap.confidence.toFixed(2) : "?";
+  const snippet = typeof ap.answer === "string" ? ap.answer.slice(0, 80).replace(/\n/g, " ") : "?";
+  el.textContent =
+    `Feedback → User clicked No  |  retry OK\n` +
+    `           grounded: ${ap.grounded ?? "?"}  confidence: ${conf}  citations: ${(ap.citations || []).length}\n` +
+    `           answer: "${snippet}${ap.answer && ap.answer.length > 80 ? "…" : ""}"`;
 }
 
 let isSending = false;
@@ -502,16 +528,19 @@ function appendMessage(role, text, options = {}) {
         feedbackEndpoint: FEEDBACK_ENDPOINT,
         onAcknowledge: () => {
           statusEl.textContent = "Thanks for the feedback.";
+          if (DEBUG_MODE) updateFeedbackDebug({ type: "acknowledged" });
         },
-        onRetryAnswer: (retryAnswer) => {
+        onRetryAnswer: (retryAnswer, retryPayload) => {
           lastAnswer = retryAnswer;
           appendMessage("bot", retryAnswer);
           speakText(retryAnswer);
           statusEl.textContent = "Retry answer received. Ask another question any time.";
+          if (DEBUG_MODE) updateFeedbackDebug({ type: "retried", answerPayload: retryPayload });
         },
         onRetryError: (fallbackMessage = FRIENDLY_FEEDBACK_ERROR) => {
           appendMessage("bot", fallbackMessage);
           statusEl.textContent = fallbackMessage;
+          if (DEBUG_MODE) updateFeedbackDebug({ type: "retry_failed", error: fallbackMessage });
         },
       })
     );
