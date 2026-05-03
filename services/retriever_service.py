@@ -552,8 +552,8 @@ class RetrieverService:
         return report
 
     def ensure_indexes(self, *, wait_for_ready: bool = True) -> IndexHealthReport:
-        """
-        Create vector and text search indexes if missing or mismatched.
+        """Create vector and text search indexes if missing or mismatched.
+
         Detects embedding dimensions dynamically from stored chunks.
         """
         report = self._index_manager.ensure_indexes(wait_for_ready=wait_for_ready)
@@ -562,11 +562,7 @@ class RetrieverService:
         return report
 
     def _build_atlas_filter_clauses(self, metadata_filter: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Translate basic Mongo metadata filters into Atlas Search filter clauses.
-
-        This is intentionally conservative; for richer Atlas mappings you can extend this
-        helper with phrase/wildcard/path-specific logic.
-        """
+        """Translate Mongo metadata filters into Atlas Search compound filter clauses."""
         clauses: List[Dict[str, Any]] = []
         for field_name, value in metadata_filter.items():
             if isinstance(value, dict) and "$in" in value:

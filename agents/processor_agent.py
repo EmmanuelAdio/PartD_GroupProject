@@ -107,11 +107,7 @@ class ProcessorAgent:
         return self.process(user_query)
 
     def get_schema_context(self) -> Dict[str, Any]:
-        """Build retrieval schema context injected into the LLM prompt.
-
-        Keeping values in this method avoids hardcoding schema values directly
-        inside prompt text and makes orchestration/config wiring straightforward.
-        """
+        """Build the retrieval schema context dict injected into the LLM planning prompt."""
         model_schema = RetrievalQuery.model_json_schema()
         top_k_schema = model_schema.get("properties", {}).get("top_k", {})
         return {

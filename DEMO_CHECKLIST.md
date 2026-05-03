@@ -19,7 +19,6 @@ The frontend reads `VITE_API_BASE_URL` from `cs-avatar/.env` (defaults to `http:
 
 ```bash
 # From the project root
-cd c:/Users/Emman/OneDrive/Documents/GitHub/PartD_GroupProject
 
 # Activate virtual environment
 .venv/Scripts/activate          # Windows

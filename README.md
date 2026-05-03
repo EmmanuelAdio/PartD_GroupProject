@@ -44,7 +44,7 @@ Notes:
 - `OPEN_API_KEY` is also accepted as an alias for OpenAI key lookup.
 - `pytest` is required for the unit test files (install with `pip install pytest`).
 - `FRONTEND_ORIGINS` controls FastAPI CORS origins for browser calls (comma-separated).
-- `app/main.py` now loads `.env` from project root explicitly, with a built-in fallback parser when `python-dotenv` is not installed.
+- `app/main.py` loads `.env` from the project root automatically, with a built-in fallback parser when `python-dotenv` is not installed.
 - Keep provider keys server-side only. Never put `OPENAI_API_KEY` into frontend env files.
 
 ## Run the project (backend + frontend)
@@ -1144,17 +1144,10 @@ What these validate:
 
 Where version comes from:
 - `ChunkRecord.version` is set by `IngestionService(version=...)`.
-- In `test_ingestion_service.py`, the service is currently created with `version="test-v2"`.
+- In `test_ingestion_service.py`, the service is created with `version="test-v2"`.
 - If not set explicitly, `IngestionService` defaults to `version="v1"`.
 
-What this means now:
-- Version values are currently manual labels, not auto-generated.
-- They are useful to track which ingestion logic produced a given record set.
-
-Recommended versioning rule (next step):
-1. Use semantic labels: `ingest-v1`, `ingest-v2`, etc.
-2. Bump when chunking/tagging/embedding logic changes.
-3. Keep old data queryable by filtering on `version`.
+Version values are manual labels used to track which ingestion run produced a given record set. Use semantic labels (`ingest-v1`, `ingest-v2`, etc.) and bump when chunking, tagging, or embedding logic changes. Old data remains queryable by filtering on `version`.
 
 ## Troubleshooting
 

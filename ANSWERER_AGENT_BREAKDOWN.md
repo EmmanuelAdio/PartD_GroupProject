@@ -31,9 +31,9 @@ So you can think of it like this:
 
 ## Where It Sits In The System
 
-The `AnswererAgent` lives in [`agents/answerer_agent.py`](/Users/dikachiudeh-joseph/Documents/GitHub/PartD_GroupProject/agents/answerer_agent.py).
+The `AnswererAgent` lives in [`agents/answerer_agent.py`](agents/answerer_agent.py).
 
-It is called from [`app/orchestrator.py`](/Users/dikachiudeh-joseph/Documents/GitHub/PartD_GroupProject/app/orchestrator.py) inside `QueryOrchestrator.run(...)`.
+It is called from [`app/orchestrator.py`](app/orchestrator.py) inside `QueryOrchestrator.run(...)`.
 
 High-level flow:
 
@@ -54,7 +54,7 @@ Inputs:
 - `evidence_items`: the retrieved chunks from the knowledge base
 - `processor_plan`: the structured retrieval plan created earlier by `ProcessorAgent`
 
-The evidence items use the `EvidenceItem` model from [`schemas/models.py`](/Users/dikachiudeh-joseph/Documents/GitHub/PartD_GroupProject/schemas/models.py).
+The evidence items use the `EvidenceItem` model from [`schemas/models.py`](schemas/models.py).
 
 Each evidence item can contain:
 
@@ -78,7 +78,7 @@ This includes:
 - `used_evidence_count`: how many evidence chunks were cited
 - `fallback_used`: whether the agent used the deterministic fallback instead of trusting the LLM result
 
-The citation objects are `AnswerCitation` records, also defined in [`schemas/models.py`](/Users/dikachiudeh-joseph/Documents/GitHub/PartD_GroupProject/schemas/models.py).
+The citation objects are `AnswerCitation` records, also defined in [`schemas/models.py`](schemas/models.py).
 
 ## Step-By-Step Logic
 

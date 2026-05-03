@@ -267,7 +267,6 @@ function updateDebugPanel(payload) {
   const dec = payload.orchestration_decision || {};
   const t = payload.timing_ms || {};
 
-  // const verdictIcon = { pass: "✅", ask_clarification: "❓", fallback: "⚠️", revise: "🔄" }[ev.verdict] || "❔";
   const conf = typeof ans.confidence === "number" ? ans.confidence.toFixed(2) : "?";
 
   document.getElementById("dbg-timing").textContent =

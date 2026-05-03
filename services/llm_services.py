@@ -17,12 +17,10 @@ except ImportError:  # pragma: no cover
 
 
 class LLMService:
-    """Simple wrapper for text generation and JSON-structured outputs.
+    """Simple wrapper for OpenAI text generation and JSON-structured outputs.
 
-    Use this for:
-    - chunk/domain tagging during ingestion
-    - query classification in the Processor agent later
-    - answer generation only if you want a shared LLM wrapper
+    Used by IngestionService for chunk tagging, ProcessorAgent for retrieval
+    planning, and AnswererAgent/EvaluatorAgent for answer generation and judging.
     """
 
     def __init__(
