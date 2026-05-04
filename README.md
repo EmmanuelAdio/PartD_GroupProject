@@ -1,4 +1,4 @@
-# Loughborough University Open Day Virtual Assistant
+# Loughborough University Open Day Virtual Assistant (by Team 1)
 
 A multi-agent RAG chatbot that answers prospective student questions about Loughborough University.
 A 3D avatar UI (Three.js) communicates with a FastAPI backend that runs a four-stage pipeline:
@@ -21,14 +21,27 @@ For demo setup and example questions see [DEMO_CHECKLIST.md](DEMO_CHECKLIST.md).
 
 ## Setup
 
-Run from the project root. Install dependencies:
+Create a virtual environment:
 ```bash
-pip install -r requirements.txt
+python -m venv .venv
+```
+
+Activate the virtual environment:
+```bash
+# On Windows:
+.venv\Scripts\activate
+# On macOS/Linux:
+source .venv/bin/activate
 ```
 
 Recommended interpreter for this repo:
 ```bash
 .venv\Scripts\python.exe
+```
+
+From the virtual environment in the project root, install dependencies:
+```bash
+pip install -r requirements.txt
 ```
 
 Create `.env`:
@@ -868,8 +881,11 @@ Expected output example:
   records: 3
   first chunk domain: sports
 
-[LOCAL SUMMARY] total records built: 570
+[LOCAL SUMMARY] total records built: <sum across current non-preview data/*.json files>
 ```
+
+Note:
+- The summary total is dataset-dependent and will change as JSON files are added/updated.
 
 ### 2) Local test for one file
 
@@ -923,7 +939,7 @@ Expected output example:
   collection: kb_chuncks
   embedder: fake
   tagger: heuristic
-  files to ingest: 4
+  files to ingest: <number of current non-preview data/*.json files>
 
 [accommodation_halls.json]
   local records built: 44
@@ -942,8 +958,8 @@ Expected output example:
   records in Mongo by source_id=lboro_sport_faqs: 3
 
 [MONGO SUMMARY]
-  total local records built: 570
-  total Mongo records across ingested source_ids: 570
+  total local records built: <sum across ingested files>
+  total Mongo records across ingested source_ids: <should match local total>
 ```
 
 ### 5) Upload one file to MongoDB
